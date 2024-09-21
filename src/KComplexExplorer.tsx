@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ListGroup, Row, Col, OverlayTrigger, Form, Popover, Button } from 'react-bootstrap';
+import { ListGroup, OverlayTrigger, Form, Popover } from 'react-bootstrap';
 import { PCS12 } from './Objects';
 import { SubsetOf, SupersetOf } from './Utils';
 import './KComplexExplorer.css'; 
@@ -150,129 +150,141 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                         <td rowSpan={2} className="align-top">
                             <h4>Pitch class sets:</h4>
                             <div className="scrollable-list" ref={pcsListRef} style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-                                {pcs12List.map(chord => (
-                                    <OverlayTrigger
-                                        key={`pcs-${chord.toForteNumberString()}`}
-                                        placement="left"
-                                        show={showPcsPopover === chord.toForteNumberString()}
-                                        overlay={
-                                            <Popover id={`pcs-popover-${chord.toForteNumberString()}`} className="custom-popover">
-                                                <Popover.Header>
+                            {pcs12List.map(chord => (
+                                <OverlayTrigger
+                                    key={`pcs-${chord.toForteNumberString()}`}
+                                    placement="left"
+                                    overlay={
+                                        <Popover id={`pcspop-${chord.toForteNumberString()}`}>
+                                            <Popover.Header>
                                                     <strong>{chord.toForteNumberString()}</strong>
-                                                    <Button variant="close" className="close-button" onClick={() => setShowPcsPopover('')}>×</Button>
-                                                </Popover.Header>
-                                                <Popover.Body>
-                                                    <strong>Common name(s): </strong>{chord.getCommonName() || 'None'}<br />
-                                                    <strong>Pitch classes: </strong>{chord.combinationString()}<br />
-                                                    <strong>Interval vector: </strong>{chord.getIntervalVector()?.join(', ') || '[]'}
-                                                </Popover.Body>
-                                            </Popover>
-                                        }
-                                        trigger="click"
-                                        rootClose
+                                                    <button type="button" className="close-button" onClick={() => setShowPcsPopover('')}>
+                                                        &times;
+                                                    </button>
+                                            </Popover.Header>
+                                            <Popover.Body>
+                                                <strong>Common name(s): </strong>{chord.getCommonName() || 'None'}<br />
+                                                <strong>Pitch classes: </strong>{chord.combinationString()}<br />
+                                                <strong>Intervals: </strong>{chord.getIntervals().map(x => String(x)).join(", ")}<br />
+                                                <strong>Interval vector: </strong>{chord.getIntervalVector()?.join(', ') || '[]'}<br />
+                                                <strong>Symmetries: </strong>{chord.getSymmetries().map(x => String(x)).join(", ")}
+                                            </Popover.Body>
+                                        </Popover>
+                                    }
+                                    show={showPcsPopover === chord.toForteNumberString()}
+                                    trigger="click"
+                                    rootClose
+                                >
+                                    <ListGroup.Item
+                                        onClick={() => {
+                                            handleSelect(chord.toForteNumberString());
+                                            setShowPcsPopover(chord.toForteNumberString());
+                                        }}
+                                        className={selectedPcs === chord.toForteNumberString() ? 'active' : ''}
                                     >
-                                        <ListGroup.Item
-                                            onClick={() => {
-                                                handleSelect(chord.toForteNumberString());
-                                                setShowPcsPopover(chord.toForteNumberString());
-                                            }}
-                                            className={selectedPcs === chord.toForteNumberString() ? 'active' : ''}
-                                        >
-                                            {chord.toForteNumberString()}
-                                        </ListGroup.Item>
-                                    </OverlayTrigger>
-                                ))}
-                            </div>
+                                        {chord.toForteNumberString()}
+                                    </ListGroup.Item>
+                                </OverlayTrigger>
+                            ))}
+                        </div>
                         </td>
                         <td rowSpan={1} className="align-top">
-                            <h4>Supersets</h4>
-                            <div className="scrollable-list" ref={supersetsRef} style={{ height: '28vh', width: '100%', overflowY: 'auto' }}>
-                                <ListGroup>
-                                    {supersets.map(superset => {
-                                        const supersetChord = PCS12.parseForte(superset);
-                                        return (
-                                            supersetChord && (
-                                                <OverlayTrigger
-                                                    key={`superset-${superset}`}
-                                                    placement="right"
-                                                    show={showSupersetPopover === superset}
-                                                    overlay={
-                                                        <Popover id={`superset-popover-${superset}`} className="custom-popover">
-                                                            <Popover.Header>
+                        <h4>Supersets</h4>
+                        <div className="scrollable-list" ref={supersetsRef} style={{ height: '28vh', width: '100%', overflowY: 'auto' }}>
+                            <ListGroup>
+                                {supersets.map(superset => {
+                                    const supersetChord = PCS12.parseForte(superset);
+                                    return (
+                                        supersetChord && (
+                                            <OverlayTrigger
+                                                key={`superset-${superset}`}
+                                                placement="right"
+                                                overlay={
+                                                    <Popover id={`pcspop-${supersetChord.toForteNumberString()}`}>
+                                                        <Popover.Header>
                                                                 <strong>{supersetChord.toForteNumberString()}</strong>
-                                                                <Button variant="close" className="close-button" onClick={() => setShowSupersetPopover('')}>×</Button>
-                                                            </Popover.Header>
-                                                            <Popover.Body>
-                                                                <strong>Common name(s): </strong>{supersetChord.getCommonName() || 'None'}<br />
-                                                                <strong>Pitch classes: </strong>{supersetChord.combinationString()}<br />
-                                                                <strong>Interval vector: </strong>{supersetChord.getIntervalVector()?.join(', ') || '[]'}<br />
-                                                            </Popover.Body>
-                                                        </Popover>
-                                                    }
-                                                    trigger="click"
-                                                    rootClose
+                                                                <button type="button" className="close-button" onClick={() => setShowSupersetPopover('')}>
+                                                                    &times;
+                                                                </button>
+                                                        </Popover.Header>
+                                                        <Popover.Body>
+                                                            <strong>Common name(s): </strong>{supersetChord.getCommonName() || 'None'}<br />
+                                                            <strong>Pitch classes: </strong>{supersetChord.combinationString()}<br />
+                                                            <strong>Intervals: </strong>{supersetChord.getIntervals().map(x => String(x)).join(", ")}<br />
+                                                            <strong>Interval vector: </strong>{supersetChord.getIntervalVector()?.join(', ') || '[]'}<br />
+                                                            <strong>Symmetries: </strong>{supersetChord.getSymmetries().map(x => String(x)).join(", ")}
+                                                        </Popover.Body>
+                                                    </Popover>
+                                                }
+                                                show={showSupersetPopover === superset}
+                                                trigger="click"
+                                                rootClose
+                                            >
+                                                <ListGroup.Item
+                                                    onClick={() => {
+                                                        setActiveSuperset(superset);
+                                                        setShowSupersetPopover(superset);
+                                                    }}
+                                                    className={activeSuperset === superset ? 'active' : ''}
                                                 >
-                                                    <ListGroup.Item
-                                                        onClick={() => {
-                                                            setActiveSuperset(superset);
-                                                            setShowSupersetPopover(superset);
-                                                        }}
-                                                        className={activeSuperset === superset ? 'active' : ''} // Apply active class conditionally
-                                                    >
-                                                        {supersetChord.toForteNumberString()}
-                                                    </ListGroup.Item>
-                                                </OverlayTrigger>
-                                            )
-                                        );
-                                    })}
-                                </ListGroup>
-                            </div>
+                                                    {supersetChord.toForteNumberString()}
+                                                </ListGroup.Item>
+                                            </OverlayTrigger>
+                                        )
+                                    );
+                                })}
+                            </ListGroup>
+                        </div>
                         </td>
                     </tr>
                     <tr>
                         <td rowSpan={1} className="align-top">
                         <h4>Subsets</h4>
-                            <div className="scrollable-list" ref={subsetsRef} style={{ height: '28vh', width: '100%', overflowY: 'auto' }}>
-                                <ListGroup>
-                                    {subsets.map(subset => {
-                                        const subsetChord = PCS12.parseForte(subset);
-                                        return (
-                                            subsetChord && (
-                                                <OverlayTrigger
-                                                    key={`subset-${subset}`}
-                                                    placement="right"
-                                                    show={showSubsetPopover === subset}
-                                                    overlay={
-                                                        <Popover id={`subset-popover-${subset}`} className="custom-popover">
-                                                            <Popover.Header>
-                                                                <strong>{subsetChord.toForteNumberString()}</strong>
-                                                                <Button variant="close" className="close-button" onClick={() => setShowSubsetPopover('')}>×</Button>
-                                                            </Popover.Header>
-                                                            <Popover.Body>
-                                                                <strong>Common name(s): </strong>{subsetChord.getCommonName() || 'None'}<br />
-                                                                <strong>Pitch classes: </strong>{subsetChord.combinationString()}<br />
-                                                                <strong>Interval vector: </strong>{subsetChord.getIntervalVector()?.join(', ') || '[]'}<br />
-                                                            </Popover.Body>
-                                                        </Popover>
-                                                    }
-                                                    trigger="click"
-                                                    rootClose
+                        <div className="scrollable-list" ref={subsetsRef} style={{ height: '28vh', width: '100%', overflowY: 'auto' }}>
+                            <ListGroup>
+                                {subsets.map(subset => {
+                                    const subsetChord = PCS12.parseForte(subset);
+                                    return (
+                                        subsetChord && (
+                                            <OverlayTrigger
+                                                key={`subset-${subset}`}
+                                                placement="right"
+                                                overlay={
+                                                    <Popover id={`pcspop-${subsetChord.toForteNumberString()}`}>
+                                                        <Popover.Header>
+                                                            <strong>{subsetChord.toForteNumberString()}</strong>
+                                                            <button type="button" className="close-button" onClick={() => setShowSupersetPopover('')}>
+                                                                &times;
+                                                            </button>
+                                                        </Popover.Header>
+                                                        <Popover.Body>
+                                                            <strong>Common name(s): </strong>{subsetChord.getCommonName() || 'None'}<br />
+                                                            <strong>Pitch classes: </strong>{subsetChord.combinationString()}<br />
+                                                            <strong>Intervals: </strong>{subsetChord.getIntervals().map(x => String(x)).join(", ")}<br />
+                                                            <strong>Interval vector: </strong>{subsetChord.getIntervalVector()?.join(', ') || '[]'}<br />
+                                                            <strong>Symmetries: </strong>{subsetChord.getSymmetries().map(x => String(x)).join(", ")}
+                                                        </Popover.Body>
+                                                    </Popover>
+                                                }
+                                                show={showSubsetPopover === subset}
+                                                trigger="click"
+                                                rootClose
+                                            >
+                                                <ListGroup.Item
+                                                    onClick={() => {
+                                                        setActiveSubset(subset);
+                                                        setShowSubsetPopover(subset);
+                                                    }}
+                                                    className={activeSubset === subset ? 'active' : ''}
                                                 >
-                                                    <ListGroup.Item
-                                                        onClick={() => {
-                                                            setActiveSubset(subset);
-                                                            setShowSubsetPopover(subset);
-                                                        }}
-                                                        className={activeSuperset === subset ? 'active' : ''} // Apply active class conditionally
-                                                    >
-                                                        {subsetChord.toForteNumberString()}
-                                                    </ListGroup.Item>
-                                                </OverlayTrigger>
-                                            )
-                                        );
-                                    })}
-                                </ListGroup>
-                            </div>
+                                                    {subsetChord.toForteNumberString()}
+                                                </ListGroup.Item>
+                                            </OverlayTrigger>
+                                        )
+                                    );
+                                })}
+                            </ListGroup>
+                        </div>
                         </td>
                     </tr>
                 </tbody>

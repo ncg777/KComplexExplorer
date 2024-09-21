@@ -20,7 +20,9 @@ export class PCS12 extends ImmutableCombination {
         this.m_Order = order;
         this.m_Transpose = transpose;
     }
-
+    public getIntervals() :number[] {
+      return this.transpose(-this.m_Transpose).getComposition().getCompositionAsArray();
+    }
     public static parse(input: string): PCS12 | undefined {
         return this.ChordDict.get(input);
     }

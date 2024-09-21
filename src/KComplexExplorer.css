@@ -65,21 +65,23 @@ h4 {
         max-width: 100%; /* Allow it to take full width on small screens */
     }
 }
-.custom-popover {
-    background-color: white; /* Change this to your desired background color */
-    border: 1px solid #ccc; /* Optional: adjust border color here */
-    max-width: 300px; /* Optional: limit width of the popover */
+.popover {
+    background-color: white;
+    max-width: 300px;
+    /* Add optional margin if necessary */
+    margin: 10px;  /* This can help with positioning slightly */
+    border: 1px solid black !important;
 }
 
 /* Optional: Style the popover header */
-.custom-popover .popover-header {
+.popover .popover-header {
     display: flex; /* Flexbox for header layout */
     align-items: center; /* Center items vertically */
     justify-content: space-between; /* Space between title and close button */
-    padding: 10px; /* Padding for header */
+    padding-left: 10px; /* Padding for header */
 }
 
-.custom-popover .popover-body {
+.popover .popover-body {
     padding: 10px; /* Optional: adjust padding inside the popover */
 }
 
