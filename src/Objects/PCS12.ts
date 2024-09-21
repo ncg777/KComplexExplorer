@@ -126,7 +126,7 @@ export class PCS12 extends ImmutableCombination {
       for(let row of forteRows) {
           //console.log('Processing row:', row);
           const forteNumber = row[0];
-          const ns = (row[1] === undefined || row[1].trim().length === 0) ? [] : row[1].split(/\s+/).map(num => Number(num));
+          const ns = (row[1].trim().length === 0) ? [] : row[1].split(/\s+/).map(num => Number(num));
           const c = ImmutableCombination.createWithSizeAndSet(12, new Set<number>(ns));
           
           const pcs12 = PCS12.identify(c);
