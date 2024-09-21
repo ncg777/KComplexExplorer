@@ -17,7 +17,7 @@ export class MidiManager {
     }
 
     playChord(chord: number[], octave:number=5) {
-        if (this.midiOutput && this.midiOutput != null) {
+        if (this.midiOutput) {
             const noteOnEvents = chord.map(note => [0x90, note+octave*12, 0x7f]); // Note on, velocity 127
             const noteOffEvents = chord.map(note => [0x80, note+octave*12, 0x00]); // Note off
 
