@@ -1,0 +1,107 @@
+.KComplexExplorer {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+}
+/* General styles for headings */
+h3,
+h4 {
+    text-align: left; /* Aligns the headings to the left */
+    margin:0;
+    margin-bottom: 8px;
+}
+.kcomplex-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 0;
+    margin:0;
+}
+.kcomplex-table th,
+.kcomplex-table td {
+    /* border: 1px solid #ddd; REMOVE THESE LINES */
+    padding-left: 8px;
+}
+
+.kcomplex-table th {
+    background-color: #f2f2f2;
+    text-align: left;
+}
+
+.kcomplex-table th:first-child,
+.kcomplex-table td:first-child {
+    width: 50%; /* Set fixed width for Pitch Class Sets column */
+}
+
+.kcomplex-table th:last-child,
+.kcomplex-table td:last-child {
+    width: 50%; /* Set fixed width for Supersets and Subsets column */
+}
+.scrollable-list {
+    height: 100%;
+    overflow-y: auto;  /* Enable vertical scrolling */
+    border: 1px solid #ced4da; /* Border color matching Bootstrap */
+    border-radius: .25rem; /* Rounded corners */
+    background-color: #ffffff; /* Optional: set the background color */
+    box-shadow: 0 0 0.25rem rgba(0, 0, 0, 0.1); /* Optional: add a subtle shadow */
+    max-width: 400px; /* Set a max width to limit horizontal stretch */
+} 
+
+.scrollable-list .list-group-item {
+    text-align: left;
+    margin-left: 5px;
+    cursor: pointer; /* Change cursor on hover */
+}
+.scrollable-list .list-group-item:hover {
+    background-color: #f8f9fa; /* Change background color on hover */
+}
+.scrollable-list .list-group-item.active {
+    background-color: #007bff; /* Background color when item is active/selected */
+    color: white; /* Text color when item is active */
+}
+/* Optional: Add some margin for smaller screens */
+@media (max-width: 768px) {
+    .scrollable-list {
+        max-width: 100%; /* Allow it to take full width on small screens */
+    }
+}
+.custom-popover {
+    background-color: white; /* Change this to your desired background color */
+    border: 1px solid #ccc; /* Optional: adjust border color here */
+    max-width: 300px; /* Optional: limit width of the popover */
+}
+
+/* Optional: Style the popover header */
+.custom-popover .popover-header {
+    display: flex; /* Flexbox for header layout */
+    align-items: center; /* Center items vertically */
+    justify-content: space-between; /* Space between title and close button */
+    padding: 10px; /* Padding for header */
+}
+
+.custom-popover .popover-body {
+    padding: 10px; /* Optional: adjust padding inside the popover */
+}
+
+.close-button {
+    background: transparent; /* Transparent background */
+    border: none; /* No border */
+    color: #333; /* Default text color */
+    font-size: 1.25rem; /* Font size */
+    cursor: pointer; /* Cursor changes to pointer */
+    display: inline-flex; /* Flexible box layout for centering */
+    align-items: center; /* Center aligns the text */
+    justify-content: center; /* Center aligns the content */
+    padding: 0; /* No padding */
+    position: absolute; /* Positioning for absolute placement */
+    top: 5px; /* Distance from the top */
+    right: 5px; /* Distance from the right */
+}
+
+.close-button:hover {
+    color: #ff0000; /* Change color on hover */
+}
+
+.close-button:focus {
+    outline: none; /* Remove outline on focus */
+}
