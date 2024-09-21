@@ -30,7 +30,8 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         if (!PCS12 || !PCS12.isInitialized()) return;
 
         const parsedScale = PCS12.parseForte(selectedScale);
-        const pred = new SubsetOf(parsedScale!!);
+        if(!parsedScale) return;
+        const pred = new SubsetOf(parsedScale);
         const allChords = PCS12.getChords();
         const filteredChords = Array.from(allChords)
             .filter(pc => pred.apply(pc))

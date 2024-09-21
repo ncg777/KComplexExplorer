@@ -62,7 +62,6 @@ export class PCS12 extends ImmutableCombination {
             orderCounts[necklace.length - 1] += 1;
         }
         output.add(PCS12.empty());
-        console.log(output);
         return output;
     }
 
@@ -111,8 +110,8 @@ export class PCS12 extends ImmutableCombination {
       return output;
   }
     private static async fillForteNumbersDict() {
-      const forteNumbersFilePath = '/resources/ForteNumbers.csv';
-      const forteNumbersCommonNamesFilePath = '/resources/ForteNumbers_CommonNames.csv';
+      const forteNumbersFilePath = '/KComplexExplorer/resources/ForteNumbers.csv';
+      const forteNumbersCommonNamesFilePath = '/KComplexExplorer/resources/ForteNumbers_CommonNames.csv';
   
       // Load Forte Numbers
       const forteNumbersData = await fetch(forteNumbersFilePath).then(response => {
@@ -129,9 +128,9 @@ export class PCS12 extends ImmutableCombination {
       const forteNumbersToPCS12Dict = new Map<string, PCS12>();
       const forteNumbersCommonNames = new Map<string, string>();
       for(let row of forteRows) {
-          //console.log('Processing row:', row);
+          console.log('Processing row:', row);
           const forteNumber = row[0];
-          const ns = row[1].trim().length === 0 ? [] : row[1].split(/\s+/).map(num => Number(num));
+          const ns = (row[1] === undefined || row[1].trim().length === 0) ? [] : row[1].split(/\s+/).map(num => Number(num));
           const c = ImmutableCombination.createWithSizeAndSet(12, new Set<number>(ns));
           
           const pcs12 = PCS12.identify(c);
@@ -165,7 +164,6 @@ export class PCS12 extends ImmutableCombination {
       }
       
       PCS12.ForteNumbersCommonNames = forteNumbersCommonNames
-      console.log(forteNumbersCommonNames);
   }
 
   public static ForteStringComparator: (o1: string, o2: string) => number = (o1, o2) => {

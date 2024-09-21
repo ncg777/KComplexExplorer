@@ -36,7 +36,6 @@ export class Combination extends BitSet {
         }
     
         const o = Combination.createWithSizeAndSet(this.n,new Set<number>(Array.from(this.getTrueBits()).map(x => (x + k) % this.n)));
-        console.log(this.combinationString(), "rot:" + t, o.combinationString())
         // Return a new Combination with the rotated BitSet
         return o;
     }
