@@ -131,14 +131,14 @@ export class PCS12 extends ImmutableCombination {
           
           const pcs12 = PCS12.identify(c);
           
-          for (let i = 0; i < 12; i++) {
+          for (let i = 12; i >=0; i++) {
               const transposed = pcs12.transpose(i);
               forteNumbersDict.set(transposed.toString(), forteNumber);
               forteNumbersRotationDict.set(transposed.toString(), i);
               const str = `${forteNumber}.${String(i).padStart(2, '0')}`;
               
               forteNumbersToPCS12Dict.set(str, transposed);
-              if(transposed.getK() === 0 || transposed.getK()===12) break;
+              //if(transposed.getK() === 0 || transposed.getK()===12) break;
           }
           
       }
