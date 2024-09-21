@@ -234,7 +234,6 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                     onClick={() => {
                                                         setActiveSuperset(superset);
                                                         setShowSupersetPopover(superset);
-                                                        const c = PCS12.parseForte(superset)?.asSequence();
                                                     }}
                                                     className={activeSuperset === superset ? 'active' : ''}
                                                 >
@@ -285,7 +284,6 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                     onClick={() => {
                                                         setActiveSubset(subset);
                                                         setShowSubsetPopover(subset);
-                                                        const c = PCS12.parseForte(subset)?.asSequence();
                                                     }}
                                                     className={activeSubset === subset ? 'active' : ''}
                                                 >
