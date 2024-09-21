@@ -124,7 +124,7 @@ export class PCS12 extends ImmutableCombination {
       const forteNumbersToPCS12Dict = new Map<string, PCS12>();
       const forteNumbersCommonNames = new Map<string, string>();
       for(let row of forteRows) {
-          console.log('Processing row:', row);
+          //console.log('Processing row:', row);
           const forteNumber = row[0];
           const ns = (row[1] === undefined || row[1].trim().length === 0) ? [] : row[1].split(/\s+/).map(num => Number(num));
           const c = ImmutableCombination.createWithSizeAndSet(12, new Set<number>(ns));
