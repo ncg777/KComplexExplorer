@@ -1,5 +1,4 @@
-import { BitSet } from './BitSet';
-import { Combination } from './Combination';
+import { BitSet, Combination  } from '.'
 
 export class Composition extends Combination {
     constructor(n: number) {

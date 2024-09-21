@@ -1,6 +1,5 @@
 // ImmutableCombination.ts
-import { Combination } from './Combination';
-import { Composition } from './Composition';
+import { Combination, Composition } from '.';
 
 /**
  * The {@code ImmutableCombination} class represents a combination of elements that cannot 

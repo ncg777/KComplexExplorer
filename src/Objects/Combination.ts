@@ -1,6 +1,5 @@
 import { Utils } from '../Utils';
-import { BitSet } from '.';
-import { Composition } from '.';
+import { BitSet, Composition } from '.';
 
 export class Combination extends BitSet {
     protected n: number;

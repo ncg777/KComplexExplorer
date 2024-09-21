@@ -1,7 +1,5 @@
-import { Necklace } from './Necklace';
+import { Necklace, Combination, ImmutableCombination } from '.';
 import Papa from 'papaparse';
-import { ImmutableCombination } from '.';
-import { Combination } from '.';
 import { CustomComparisonChain, Ordering } from '../Utils';
 
 export class PCS12 extends ImmutableCombination {
@@ -124,14 +122,14 @@ export class PCS12 extends ImmutableCombination {
       const forteNumbersToPCS12Dict = new Map<string, PCS12>();
       const forteNumbersCommonNames = new Map<string, string>();
       for(let row of forteRows) {
-          //console.log('Processing row:', row);
+          console.log("Processing row: " + row.toString())
           const forteNumber = row[0];
-          const ns = (row[1].trim().length === 0) ? [] : row[1].split(/\s+/).map(num => Number(num));
+          const ns = (!row[1] || row[1].trim().length === 0) ? [] : row[1].split(/\s+/).map(num => Number(num));
           const c = ImmutableCombination.createWithSizeAndSet(12, new Set<number>(ns));
           
           const pcs12 = PCS12.identify(c);
           
-          for (let i = 12; i >=0; i++) {
+          for (let i = 12; i >=0; i--) {
               const transposed = pcs12.transpose(i);
               forteNumbersDict.set(transposed.toString(), forteNumber);
               forteNumbersRotationDict.set(transposed.toString(), i);
@@ -322,4 +320,3 @@ export class PCS12 extends ImmutableCombination {
     return this._isInitialized;
   }
 }
-

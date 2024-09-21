@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import './App.css';
 import KComplexExplorer from './KComplexExplorer'; // Adjust the path if necessary
-import { PCS12 } from './Objects';
+import { PCS12 } from './Objects/.';
 
 
 
@@ -9,7 +9,6 @@ function App() {
   const [isInitialized, setIsInitialized] = useState(false);
   
   useEffect(() => {
-    console.log("Initializing PCS12...");
     const initialize = async () => {
         try {
             await PCS12.init();
@@ -20,7 +19,7 @@ function App() {
     };
 
     initialize();
-}, []);
+}, [isInitialized]);
 
 console.log("isInitialized:", isInitialized); // Log state before rendering
 

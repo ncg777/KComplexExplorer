@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ListGroup, OverlayTrigger, Form, Popover } from 'react-bootstrap';
-import { PCS12 } from './Objects';
+import { PCS12 } from './Objects/';
 import { SubsetOf, SupersetOf } from './Utils';
 import './KComplexExplorer.css'; 
 
