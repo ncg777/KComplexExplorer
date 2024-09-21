@@ -67,10 +67,6 @@ export class PCS12 extends ImmutableCombination {
 
     public getForteNumber(): string | undefined {
         const o = PCS12.ForteNumbersDict.get(this.toString());
-        if(!o) {
-          console.log(this.toString());
-          console.log(PCS12.ForteNumbersDict)
-        }
         return o;
     }
 
