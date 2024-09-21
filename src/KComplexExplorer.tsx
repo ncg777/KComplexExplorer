@@ -59,15 +59,13 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
             const supersetChecker = new SupersetOf(selectedChord);
             const subsetChecker = new SubsetOf(selectedChord);
 
-            const allChords = PCS12.getChords();
-
-            const foundSupersets = Array.from(allChords)
+            const foundSupersets = Array.from(pcs12List)
             .filter(chord => supersetChecker.apply(chord))
             .map(chord => chord.toForteNumberString()).sort(PCS12.ForteStringComparator);
         
             setSupersets(foundSupersets);
             
-            const foundSubsets = Array.from(allChords)
+            const foundSubsets = Array.from(pcs12List)
                 .filter(chord => subsetChecker.apply(chord))
                 .map(chord => chord.toForteNumberString()).sort(PCS12.ReverseForteStringComparator);
             
