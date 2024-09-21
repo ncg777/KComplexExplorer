@@ -138,7 +138,7 @@ export class PCS12 extends ImmutableCombination {
               const str = `${forteNumber}.${String(i).padStart(2, '0')}`;
               
               forteNumbersToPCS12Dict.set(str, transposed);
-              if(transposed.getK() === 0 || transposed.getK()==12) break;
+              if(transposed.getK() === 0 || transposed.getK()===12) break;
           }
           
       }
