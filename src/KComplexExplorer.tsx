@@ -3,12 +3,14 @@ import { ListGroup, OverlayTrigger, Form, Popover } from 'react-bootstrap';
 import { PCS12 } from './Objects/';
 import { SubsetOf, SupersetOf } from './Utils';
 import './KComplexExplorer.css'; 
+import { MidiManager } from './MidiManager';
 
 interface KComplexExplorerProps {
     scale: string;
+    midiManager: MidiManager;
 }
 
-const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
+const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale, midiManager }) => {
     const [pcs12List, setPcs12List] = useState<PCS12[]>([]);
     const [supersets, setSupersets] = useState<string[]>([]);
     const [subsets, setSubsets] = useState<string[]>([]);
@@ -189,6 +191,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                         onClick={() => {
                                             handleSelect(chord.toForteNumberString());
                                             setShowPcsPopover(chord.toForteNumberString());
+                                            midiManager.playChord(chord.asSequence());
                                         }}
                                         className={selectedPcs === chord.toForteNumberString() ? 'active' : ''}
                                     >
@@ -234,6 +237,8 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                     onClick={() => {
                                                         setActiveSuperset(superset);
                                                         setShowSupersetPopover(superset);
+                                                        const c = PCS12.parseForte(superset)?.asSequence();
+                                                        if(c) midiManager.playChord(c);
                                                     }}
                                                     className={activeSuperset === superset ? 'active' : ''}
                                                 >
@@ -284,6 +289,8 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                     onClick={() => {
                                                         setActiveSubset(subset);
                                                         setShowSubsetPopover(subset);
+                                                        const c = PCS12.parseForte(subset)?.asSequence();
+                                                        if(c) midiManager.playChord(c);
                                                     }}
                                                     className={activeSubset === subset ? 'active' : ''}
                                                 >

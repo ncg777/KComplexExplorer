@@ -50,6 +50,7 @@
     "@babel/plugin-transform-react-jsx": "^7.25.2",
     "@testing-library/dom": "^10.4.0",
     "@types/papaparse": "^5.3.14",
-    "@types/react-bootstrap": "^0.32.37"
+    "@types/react-bootstrap": "^0.32.37",
+    "@types/webmidi": "^2.1.0"
   }
 }

@@ -83,7 +83,9 @@ export class ImmutableCombination {
     public toString(): string {
         return this.combination.toString();
     }
-
+    public asSequence(): number[] {
+        return this.combination.asSequence();
+    }
     public equals(obj: any): boolean {
         if (!(obj instanceof ImmutableCombination)) return false;
         return this.combination.equals(obj.combination);

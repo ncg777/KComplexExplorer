@@ -1,27 +1,29 @@
+// App.tsx
 import React, { useEffect, useState } from 'react';
 import './App.css';
-import KComplexExplorer from './KComplexExplorer'; // Adjust the path if necessary
+import KComplexExplorer from './KComplexExplorer';
+import { MidiManager } from './MidiManager'; // Make sure to adjust the import path if necessary
 import { PCS12 } from './Objects/.';
-
-
 
 function App() {
   const [isInitialized, setIsInitialized] = useState(false);
-  
+  const [midiManager, setMidiManager] = useState<MidiManager | null>(null);
+
   useEffect(() => {
     const initialize = async () => {
-        try {
-            await PCS12.init();
-            setIsInitialized(PCS12.isInitialized());
-        } catch (error) {
-            console.error("Error during PCS12 initialization:", error);
-        }
+      try {
+        await PCS12.init(); // Initialize PCS12
+        const manager = new MidiManager(); // Create a MIDI Manager instance
+        await manager.init(); // Initialize MIDI Manager
+        setMidiManager(manager); // Set the MIDIManager instance into state
+        setIsInitialized(PCS12.isInitialized()); // Update initialization state
+      } catch (error) {
+        console.error("Error during initialization:", error);
+      }
     };
 
     initialize();
-}, [isInitialized]);
-
-console.log("isInitialized:", isInitialized); // Log state before rendering
+  }, []); // Run once on mount
 
   return (
     <div className="App">
@@ -32,7 +34,8 @@ console.log("isInitialized:", isInitialized); // Log state before rendering
         {!isInitialized ? (
           <div>Loading data, please wait...</div> // Display loading message
         ) : (
-          <KComplexExplorer scale="8-23.11" /> // Render component only if initialized
+          midiManager && <KComplexExplorer scale="8-23.11" midiManager={midiManager} /> 
+          // Render component only if initialized and MIDIManager exists
         )}
       </main>
     </div>
