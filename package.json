@@ -1,5 +1,6 @@
 {
   "name": "kcomplex-explorer",
+  "homepage": "https://ncg777.github.io/KComplexExplorer",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
