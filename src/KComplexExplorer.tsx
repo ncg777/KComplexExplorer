@@ -168,7 +168,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                 <strong>Pitch classes: </strong>{chord.combinationString()}<br />
                                                 <strong>Intervals: </strong>{chord.getIntervals().map(x => String(x)).join(", ")}<br />
                                                 <strong>Interval vector: </strong>{chord.getIntervalVector()?.join(', ') || '[]'}<br />
-                                                <strong>Symmetries: </strong>{chord.getSymmetries().map(x => String(x)).join(", ")}
+                                                <strong>Symmetries: </strong>{chord.getSymmetries().map(x => String(x)).join(", ") || "None"}
                                             </Popover.Body>
                                         </Popover>
                                     }
@@ -213,7 +213,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                             <strong>Pitch classes: </strong>{supersetChord.combinationString()}<br />
                                                             <strong>Intervals: </strong>{supersetChord.getIntervals().map(x => String(x)).join(", ")}<br />
                                                             <strong>Interval vector: </strong>{supersetChord.getIntervalVector()?.join(', ') || '[]'}<br />
-                                                            <strong>Symmetries: </strong>{supersetChord.getSymmetries().map(x => String(x)).join(", ")}
+                                                            <strong>Symmetries: </strong>{supersetChord.getSymmetries().map(x => String(x)).join(", ") || "None"}
                                                         </Popover.Body>
                                                     </Popover>
                                                 }
@@ -263,7 +263,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                             <strong>Pitch classes: </strong>{subsetChord.combinationString()}<br />
                                                             <strong>Intervals: </strong>{subsetChord.getIntervals().map(x => String(x)).join(", ")}<br />
                                                             <strong>Interval vector: </strong>{subsetChord.getIntervalVector()?.join(', ') || '[]'}<br />
-                                                            <strong>Symmetries: </strong>{subsetChord.getSymmetries().map(x => String(x)).join(", ")}
+                                                            <strong>Symmetries: </strong>{subsetChord.getSymmetries().map(x => String(x)).join(", ") || "None"}
                                                         </Popover.Body>
                                                     </Popover>
                                                 }
