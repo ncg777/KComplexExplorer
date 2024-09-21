@@ -76,8 +76,16 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const handleScaleChange = (str: string) => {
         if (str) {
             setSelectedScale(str);
+            setActiveSubset(null);
+            setActiveSuperset(null);
+            setSelectedPcs(null);
+
             setSupersets([]);
             setSubsets([]);
+
+            setShowPcsPopover('');
+            setShowSupersetPopover(''); // Reset Superset popover
+            setShowSubsetPopover('');
         }
     };
 
