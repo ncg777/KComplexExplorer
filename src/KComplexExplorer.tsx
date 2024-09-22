@@ -228,7 +228,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                         supersetChord && (
                                             <OverlayTrigger
                                                 key={`superset-${superset}`}
-                                                placement="bottom"
+                                                placement="top"
                                                 overlay={
                                                     <Popover id={`pcspop-${supersetChord.toForteNumberString()}`}>
                                                         <Popover.Header>
