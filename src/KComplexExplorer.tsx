@@ -117,15 +117,17 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         window.addEventListener('scroll', handleScroll);
         // Attach scroll event listeners to list elements
         pcsList?.addEventListener('scroll', handleScroll);
-        supersetsList?.addEventListener('scroll', handleScroll);
-        subsetsList?.addEventListener('scroll', handleScroll);
+        const superL = () => {setShowSupersetPopover('');};
+        supersetsList?.addEventListener('scroll', superL);
+        const subL = () => {setShowSubsetPopover('');};
+        subsetsList?.addEventListener('scroll', subL);
 
         // Cleanup function to remove event listeners
         return () => {
             window.removeEventListener('scroll', handleScroll);
             pcsList?.removeEventListener('scroll', handleScroll);
-            supersetsList?.removeEventListener('scroll', handleScroll);
-            subsetsList?.removeEventListener('scroll', handleScroll);
+            supersetsList?.removeEventListener('scroll', superL);
+            subsetsList?.removeEventListener('scroll', subL);
         };
     }, [pcs12List, supersets, subsets]); // Add dependencies as needed
     // Listening to clicks outside
@@ -177,7 +179,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                         chord && (
                                             <OverlayTrigger
                                                 key={`pcs12-${chord.toForteNumberString()}`}
-                                                placement="left"
+                                                placement="top"
                                                 overlay={
                                                     <Popover id={`pcspop-${chord.toForteNumberString()}`}>
                                                         <Popover.Header>
@@ -226,7 +228,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                         supersetChord && (
                                             <OverlayTrigger
                                                 key={`superset-${superset}`}
-                                                placement="right"
+                                                placement="bottom"
                                                 overlay={
                                                     <Popover id={`pcspop-${supersetChord.toForteNumberString()}`}>
                                                         <Popover.Header>
@@ -276,7 +278,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                         subsetChord && (
                                             <OverlayTrigger
                                                 key={`subset-${subset}`}
-                                                placement="right"
+                                                placement="top"
                                                 overlay={
                                                     <Popover id={`pcspop-${subsetChord.toForteNumberString()}`}>
                                                         <Popover.Header>
