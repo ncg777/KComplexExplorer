@@ -144,7 +144,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                         as="select"
                         value={selectedScale}
                         onChange={(e) => handleScaleChange(e.target.value)}
-                        style={{margin:'0', paddingLeft:'5px', position:'absolute', left: '108px', top: '-5px',maxWidth: '300px'}}
+                        style={{margin:'0', paddingLeft:'5px', position:'absolute', left: '108px', top: '-5px',maxWidth: '150px'}}
                     >
                         {Array.from(PCS12.getChords())
                             .map(ch => ch.toForteNumberString())
@@ -160,7 +160,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                 <Button
                     variant="info"
                     onClick={() => setShowHelpModal(true)}
-                    style={{ position: 'absolute', right: 0, top: 0}}
+                    style={{ position: 'absolute', right: 0, top: '-5px'}}
                 >
                     Help
                 </Button>
