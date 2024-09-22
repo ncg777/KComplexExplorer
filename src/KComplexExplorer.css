@@ -40,7 +40,7 @@ h4 {
 .scrollable-list {
     height: 100%;
     overflow-y: auto;  /* Enable vertical scrolling */
-    border: 1px solid #ced4da; /* Border color matching Bootstrap */
+    border: 0; /* Border color matching Bootstrap */
     border-radius: .25rem; /* Rounded corners */
     background-color: #ffffff; /* Optional: set the background color */
     box-shadow: 0 0 0.25rem rgba(0, 0, 0, 0.1); /* Optional: add a subtle shadow */
@@ -106,4 +106,7 @@ h4 {
 
 .close-button:focus {
     outline: none; /* Remove outline on focus */
+}
+.header {
+    position: relative;
 }
