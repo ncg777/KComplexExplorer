@@ -323,9 +323,9 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                     <Modal.Title>Help</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    <h5>Using the KComplex Explorer</h5>
+                    <h5>Using the k-Complex explorer</h5>
                     <p>
-                        The KComplex Explorer allows you to explore various pitch class sets using Forte number notation and see their supersets and subsets within a specified scale. 
+                        The k-Complex Explorer allows you to explore various pitch class sets using <a href="https://en.wikipedia.org/wiki/Forte_number" target="_blank">Forte number notation</a> and see their supersets and subsets within a specified scale. 
                         You can select a scale from the dropdown menu to filter the list of pitch class sets.
                     </p>
                     <p>
