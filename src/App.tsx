@@ -24,7 +24,7 @@ function App() {
     return (
         <div className="App">
             <header className="App-header">
-                <h1>k-Complex Explorer</h1>
+                <h1>k-Complex explorer</h1>
             </header>
             <main>
                 {!isInitialized ? (

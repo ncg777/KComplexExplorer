@@ -139,7 +139,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         <div className="KComplexExplorer">
             <div className="header">
                 <Form.Group controlId="scaleSelect" style={{ textAlign: 'left', paddingLeft:'8px', marginBottom: '1em' }}>
-                    <Form.Label><strong>Select Scale: </strong></Form.Label>
+                    <Form.Label><strong>Select Scale </strong></Form.Label>
                     <Form.Control
                         as="select"
                         value={selectedScale}
@@ -169,7 +169,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                 <tbody>
                     <tr>
                         <td rowSpan={2} className="align-top">
-                            <h4>Pitch class sets:</h4>
+                            <h4>Pitch class sets</h4>
                             <div className="scrollable-list" ref={pcsListRef} style={{ maxHeight: '60vh', overflowY: 'auto' }}>
                             <ListGroup>
                                 {pcs12List.map(chord => {
