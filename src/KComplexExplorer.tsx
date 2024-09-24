@@ -184,7 +184,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                     <Popover id={`pcspop-${chord.toForteNumberString()}`}>
                                                         <Popover.Header>
                                                                 <strong>{chord.toForteNumberString()}</strong>
-                                                                <button type="button" className="close-button" onClick={() => setShowPcsPopover('')}>
+                                                                <button type="button" className="close-button" onClick={(e) => {e.stopPropagation(); setShowPcsPopover('')}}>
                                                                     &times;
                                                                 </button>
                                                         </Popover.Header>
@@ -233,7 +233,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                     <Popover id={`pcspop-${supersetChord.toForteNumberString()}`}>
                                                         <Popover.Header>
                                                                 <strong>{supersetChord.toForteNumberString()}</strong>
-                                                                <button type="button" className="close-button" onClick={() => setShowSupersetPopover('')}>
+                                                                <button type="button" className="close-button" onClick={(e) => {e.stopPropagation(); setShowSupersetPopover('')}}>
                                                                     &times;
                                                                 </button>
                                                         </Popover.Header>
@@ -283,7 +283,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                     <Popover id={`pcspop-${subsetChord.toForteNumberString()}`}>
                                                         <Popover.Header>
                                                             <strong>{subsetChord.toForteNumberString()}</strong>
-                                                            <button type="button" className="close-button" onClick={() => setShowSupersetPopover('')}>
+                                                            <button type="button" className="close-button" onClick={(e) =>{e.stopPropagation(); setShowSubsetPopover('')}}>
                                                                 &times;
                                                             </button>
                                                         </Popover.Header>
@@ -327,7 +327,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                 <Modal.Body>
                     <h5>Using the k-Complex explorer</h5>
                     <p>
-                        The k-Complex Explorer allows you to explore various pitch class sets using <a href="https://en.wikipedia.org/wiki/Forte_number" target="_blank">Forte number notation</a> and see their supersets and subsets within a specified scale. 
+                        The k-Complex Explorer allows you to explore various pitch class sets using <a href="https://en.wikipedia.org/wiki/Forte_number" target="_blank" rel="noreferrer">Forte number notation</a> and see their supersets and subsets within a specified scale. 
                         You can select a scale from the dropdown menu to filter the list of pitch class sets.
                     </p>
                     <p>
