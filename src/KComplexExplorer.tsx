@@ -3,6 +3,7 @@ import { ListGroup, OverlayTrigger, Form, Popover, Button, Modal } from 'react-b
 import { PCS12 } from './Objects/';
 import { SubsetOf, SupersetOf } from './Utils';
 import './KComplexExplorer.css';
+import * as Tone from 'tone';
 
 interface KComplexExplorerProps {
     scale: string;
@@ -137,6 +138,23 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
             document.removeEventListener('click', handleClickOutside);
         };
     }, []);
+
+    const playChordSeq = useCallback((chord: PCS12) => {
+        const now = Tone.now();
+        const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+        // Calculate and play each note in the chord sequentially
+        chord.asSequence().forEach((pc, index) => {
+            const note = Tone.Frequency(pc + 60, "midi").toNote(); // 60 is C4
+            synth.triggerAttackRelease(note, 0.25, now + index * 0.25); 
+        });
+
+    },[]);
+    const playChordSimul = useCallback((chord: PCS12) => {
+        const now = Tone.now();
+        const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+        synth.triggerAttackRelease(chord.asSequence().map(pc => Tone.Frequency(pc + 60, "midi").toNote()), 1, now);
+    },[]);
+    
     return (
         <div className="KComplexExplorer">
             <div className="header">
@@ -189,6 +207,9 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                                 </button>
                                                         </Popover.Header>
                                                         <Popover.Body>
+                                                            <strong>Play: </strong>
+                                                                <Button className="playbutton" onClick={(e) => {e.stopPropagation(); playChordSeq(chord)}}>Seq</Button>
+                                                                <Button className="playbutton" onClick={(e) => {e.stopPropagation(); playChordSimul(chord);}}>Simul</Button><br />
                                                             <strong>Common name(s): </strong>{chord.getCommonName() || 'None'}<br />
                                                             <strong>Pitch classes: </strong>{chord.combinationString()}<br />
                                                             <strong>Intervals: </strong>{chord.getIntervals().map(x => String(x)).join(", ")}<br />
@@ -238,6 +259,9 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                                 </button>
                                                         </Popover.Header>
                                                         <Popover.Body>
+                                                            <strong>Play: </strong>
+                                                                <Button className="playbutton" onClick={(e) => {e.stopPropagation(); playChordSeq(supersetChord)}}>Seq</Button>
+                                                                <Button className="playbutton" onClick={(e) => {e.stopPropagation(); playChordSimul(supersetChord);}}>Simul</Button><br />
                                                             <strong>Common name(s): </strong>{supersetChord.getCommonName() || 'None'}<br />
                                                             <strong>Pitch classes: </strong>{supersetChord.combinationString()}<br />
                                                             <strong>Intervals: </strong>{supersetChord.getIntervals().map(x => String(x)).join(", ")}<br />
@@ -288,6 +312,9 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                             </button>
                                                         </Popover.Header>
                                                         <Popover.Body>
+                                                            <strong>Play: </strong>
+                                                                <Button className="playbutton" onClick={(e) => {e.stopPropagation(); playChordSeq(subsetChord)}}>Seq</Button>
+                                                                <Button className="playbutton" onClick={(e) => {e.stopPropagation(); playChordSimul(subsetChord);}}>Simul</Button><br />
                                                             <strong>Common name(s): </strong>{subsetChord.getCommonName() || 'None'}<br />
                                                             <strong>Pitch classes: </strong>{subsetChord.combinationString()}<br />
                                                             <strong>Intervals: </strong>{subsetChord.getIntervals().map(x => String(x)).join(", ")}<br />
