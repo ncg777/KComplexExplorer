@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ListGroup, OverlayTrigger, Form, Popover, Button, Modal } from 'react-bootstrap';
 import { PCS12 } from './Objects/';
-import { SubsetOf, SupersetOf } from './Utils';
+import { SubsetOf, SupersetOf, Utils } from './Utils';
 import './KComplexExplorer.css';
 import * as Tone from 'tone';
 
@@ -142,13 +142,21 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const playChordSeq = useCallback((chord: PCS12) => {
         const now = Tone.now();
         const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+
+        let nums = chord.asSequence();
+        const r = chord.getForteNumberRotation();
+        const i = nums.indexOf(r,0);
+
+        nums = Utils.rotate(nums.map((n) => n < r ? n+12 :n), -i);
+
         // Calculate and play each note in the chord sequentially
-        chord.asSequence().forEach((pc, index) => {
+        nums.forEach((pc, index) => {
             const note = Tone.Frequency(pc + 60, "midi").toNote(); // 60 is C4
             synth.triggerAttackRelease(note, 0.25, now + index * 0.25); 
         });
 
     },[]);
+    
     const playChordSimul = useCallback((chord: PCS12) => {
         const now = Tone.now();
         const synth = new Tone.PolySynth(Tone.Synth).toDestination();

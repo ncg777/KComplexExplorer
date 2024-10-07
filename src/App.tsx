@@ -30,7 +30,7 @@ function App() {
                 {!isInitialized ? (
                     <div>Loading data, please wait...</div>
                 ) : (
-                    <KComplexExplorer scale="8-23.11" />
+                    <KComplexExplorer scale="8-23.04" />
                 )}
             </main>
         </div>

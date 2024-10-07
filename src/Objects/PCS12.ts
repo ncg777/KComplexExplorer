@@ -229,8 +229,8 @@ export class PCS12 extends ImmutableCombination {
     return Number(str);
   }
 
-  public getForteNumberRotation(): number | undefined {
-    return PCS12.ForteNumbersRotationDict.get(this.toString());
+  public getForteNumberRotation(): number {
+    return PCS12.ForteNumbersRotationDict.get(this.toString()) as number;
   }
 
   public toForteNumberString(): string {
