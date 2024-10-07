@@ -30,6 +30,17 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const subsetsRef = useRef<HTMLDivElement>(null);
 
     
+    
+    // Create a poly synth with sine wave
+    const getSynth = useCallback(() => {
+        return new Tone.PolySynth(Tone.Synth, {
+        oscillator: {
+            type: 'triangle',
+            }
+        }
+        ).toDestination()
+    },[]);
+    
     const refreshPcs = useCallback(() => {
         if (!PCS12 || !PCS12.isInitialized()) return;
 
@@ -138,10 +149,10 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
             document.removeEventListener('click', handleClickOutside);
         };
     }, []);
-
+    
     const playChordSeq = useCallback((chord: PCS12) => {
         const now = Tone.now();
-        const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+        const synth = getSynth();
 
         let nums = chord.asSequence();
         const r = chord.getForteNumberRotation();
@@ -151,17 +162,18 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
 
         // Calculate and play each note in the chord sequentially
         nums.forEach((pc, index) => {
-            const note = Tone.Frequency(pc + 60, "midi").toNote(); // 60 is C4
+            const note = Tone.Frequency(pc + 72, "midi").toNote(); // 60 is C4
             synth.triggerAttackRelease(note, 0.25, now + index * 0.25); 
         });
 
-    },[]);
+    },[getSynth]);
     
     const playChordSimul = useCallback((chord: PCS12) => {
         const now = Tone.now();
-        const synth = new Tone.PolySynth(Tone.Synth).toDestination();
-        synth.triggerAttackRelease(chord.asSequence().map(pc => Tone.Frequency(pc + 60, "midi").toNote()), 1, now);
-    },[]);
+        const synth = getSynth();
+        const r = chord.getForteNumberRotation();
+        synth.triggerAttackRelease(chord.asSequence().map((n) => n < r ? n+12:n).map(pc => Tone.Frequency(pc + 72, "midi").toNote()), 1, now);
+    },[getSynth]);
     
     return (
         <div className="KComplexExplorer">
