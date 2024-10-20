@@ -214,7 +214,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                     <tr>
                         <td rowSpan={2} className="align-top">
                             <h4>Pitch class sets</h4>
-                            <div className="scrollable-list" ref={pcsListRef} style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                            <div className="scrollable-list" ref={pcsListRef} style={{ maxHeight: '70vh', overflowY: 'auto' }}>
                             <ListGroup>
                                 {pcs12List.map(chord => {
                                     return (
@@ -266,7 +266,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                         </td>
                         <td rowSpan={1} className="align-top">
                         <h4>Supersets</h4>
-                        <div className="scrollable-list" ref={supersetsRef} style={{ height: '28vh', width: '100%', overflowY: 'auto' }}>
+                        <div className="scrollable-list" ref={supersetsRef} style={{ height: '33vh', width: '100%', overflowY: 'auto' }}>
                             <ListGroup>
                                 {supersets.map(superset => {
                                     const supersetChord = PCS12.parseForte(superset);
@@ -320,7 +320,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                     <tr>
                         <td rowSpan={1} className="align-top">
                         <h4>Subsets</h4>
-                        <div className="scrollable-list" ref={subsetsRef} style={{ height: '28vh', width: '100%', overflowY: 'auto' }}>
+                        <div className="scrollable-list" ref={subsetsRef} style={{ height: '33vh', width: '100%', overflowY: 'auto' }}>
                             <ListGroup>
                                 {subsets.map(subset => {
                                     const subsetChord = PCS12.parseForte(subset);
