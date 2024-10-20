@@ -184,6 +184,7 @@ export class PCS12 extends ImmutableCombination {
             const b = y.getForteAB();
             return Ordering.natural().nullsFirst().getComparator()(a, b);
         })
+        .compare((x,y) => Ordering.natural().getComparator()(x.getForteNumberRotation(),y.getForteNumberRotation()))
         .result();
   };
 
