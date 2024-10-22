@@ -28,7 +28,7 @@ const KEY_POSITIONS = [
 
 const PCS12Identifier: React.FC<{ show: boolean; onHide: () => void }> = ({ show, onHide }) => {
     const [selectedKeys, setSelectedKeys] = useState<Set<number>>(new Set());
-    const [identifiedPCS12, setIdentifiedPCS12] = useState<string | null>(null);
+    const [identifiedPCS12, setIdentifiedPCS12] = useState<PCS12>(PCS12.empty());
 
     
     const toggleKey = (key: number) => {
@@ -45,7 +45,7 @@ const PCS12Identifier: React.FC<{ show: boolean; onHide: () => void }> = ({ show
     const createPCS12 = (keys: Set<number>) => {
         const set = new Set(keys);
         const pcs12 = PCS12.identify(PCS12.createWithSizeAndSet(12, set));
-        setIdentifiedPCS12(pcs12 ? pcs12.toForteNumberString() : 'Invalid Combination'); // Use toForteNumberString
+        setIdentifiedPCS12(pcs12); // Use toForteNumberString
     };
 
     return (
@@ -54,8 +54,13 @@ const PCS12Identifier: React.FC<{ show: boolean; onHide: () => void }> = ({ show
                 <Modal.Title>PCS12 from Notes</Modal.Title>
             </Modal.Header>
             <Modal.Body>
-                <div style={{ textAlign: 'center', fontSize: '24px', marginBottom: '20px' }}>
-                    {identifiedPCS12 ? identifiedPCS12 : 'Select notes to identify PCS12'}
+                <div>
+                    <strong>Forte number: </strong>{identifiedPCS12.toForteNumberString()}<br />
+                    <strong>Common name(s): </strong>{identifiedPCS12.getCommonName() || 'None'}<br />
+                    <strong>Pitch classes: </strong>{identifiedPCS12.combinationString()}<br />
+                    <strong>Intervals: </strong>{identifiedPCS12.getIntervals().map(x => String(x)).join(", ")}<br />
+                    <strong>Interval vector: </strong>{identifiedPCS12.getIntervalVector()?.join(', ') || '[]'}<br />
+                    <strong>Symmetries: </strong>{identifiedPCS12.getSymmetries().map(x => String(x)).join(", ") || "None"}
                 </div>
                 <div className="piano">
                     {KEY_POSITIONS.map((left, i) => (
