@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Modal, Button } from 'react-bootstrap';
 import { PCS12 } from './Objects';
 import './Piano.css'; // Keep CSS for styling
+import * as Tone from 'tone';
 
 // Define the hardcoded left positions for each key (in percentages)
 const WHITE_KEY_WIDTH = '14.2857%'; // 100% / 7 keys for a width of approximately 14.29% each
@@ -30,8 +31,23 @@ const PCS12Identifier: React.FC<{ show: boolean; onHide: () => void }> = ({ show
     const [selectedKeys, setSelectedKeys] = useState<Set<number>>(new Set());
     const [identifiedPCS12, setIdentifiedPCS12] = useState<PCS12>(PCS12.empty());
 
-    
-    const toggleKey = (key: number) => {
+    const getSynth = useCallback(() => {
+        return new Tone.PolySynth(Tone.Synth, {
+        oscillator: {
+            type: 'triangle',
+            }
+        }
+        ).toDestination()
+    },[]);
+
+    const playNote = useCallback((i:number) => {
+        const now = Tone.now();
+        const synth = getSynth();
+        const note = Tone.Frequency(i + 72, "midi").toNote(); 
+        synth.triggerAttackRelease(note, 0.25, now);
+    },[getSynth]);
+
+    const toggleKey = useCallback((key: number) => {
         const newSelectedKeys = new Set(selectedKeys);
         if (newSelectedKeys.has(key)) {
             newSelectedKeys.delete(key);
@@ -40,13 +56,16 @@ const PCS12Identifier: React.FC<{ show: boolean; onHide: () => void }> = ({ show
         }
         setSelectedKeys(newSelectedKeys);
         createPCS12(newSelectedKeys);
-    };
+
+        if(newSelectedKeys.has(key)) playNote(key);
+    },[playNote,selectedKeys]);
 
     const createPCS12 = (keys: Set<number>) => {
         const set = new Set(keys);
         const pcs12 = PCS12.identify(PCS12.createWithSizeAndSet(12, set));
-        setIdentifiedPCS12(pcs12); // Use toForteNumberString
+        setIdentifiedPCS12(pcs12);
     };
+
 
     return (
         <Modal show={show} onHide={onHide}>
