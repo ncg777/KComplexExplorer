@@ -90,14 +90,6 @@ const PCS12Identifier: React.FC<{ show: boolean; onHide: () => void }> = ({ show
                         ))}
                     </select>
                 </div>
-                <div>
-                    <strong>Forte number: </strong>{identifiedPCS12.toString()}<br />
-                    <strong>Common name(s): </strong>{identifiedPCS12.getCommonName() || 'None'}<br />
-                    <strong>Pitch classes: </strong>{identifiedPCS12.combinationString()}<br />
-                    <strong>Intervals: </strong>{identifiedPCS12.getIntervals().map(x => String(x)).join(", ")}<br />
-                    <strong>Interval vector: </strong>{identifiedPCS12.getIntervalVector()?.join(', ') || '[]'}<br />
-                    <strong>Symmetries: </strong>{identifiedPCS12.getSymmetries().map(x => String(x)).join(", ") || "None"}
-                </div>
                 <div className="piano">
                     {KEY_POSITIONS.map((left, i) => (
                         <React.Fragment key={i}>
@@ -129,6 +121,14 @@ const PCS12Identifier: React.FC<{ show: boolean; onHide: () => void }> = ({ show
                         }
                         </React.Fragment>
                     ))}
+                </div>
+                <div>
+                    <strong>Forte number: </strong>{identifiedPCS12.toString()}<br />
+                    <strong>Common name(s): </strong>{identifiedPCS12.getCommonName() || 'None'}<br />
+                    <strong>Pitch classes: </strong>{identifiedPCS12.combinationString()}<br />
+                    <strong>Intervals: </strong>{identifiedPCS12.getIntervals().map(x => String(x)).join(", ")}<br />
+                    <strong>Interval vector: </strong>{identifiedPCS12.getIntervalVector()?.join(', ') || '[]'}<br />
+                    <strong>Symmetries: </strong>{identifiedPCS12.getSymmetries().map(x => String(x)).join(", ") || "None"}
                 </div>
             </Modal.Body>
             <Modal.Footer>
