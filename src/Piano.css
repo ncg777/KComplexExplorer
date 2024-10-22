@@ -1,0 +1,31 @@
+.piano {
+    display: flex;
+    position: relative;
+    height: 150px;
+    margin-top: 20px;
+    width: 100%;
+}
+
+.white-key {
+    flex: 1;
+    background: white;
+    height: 100%; /* Full height for white keys */
+    width: 8.33%; /* Adjust white key widths for proper fit */
+}
+
+.piano-key {
+    cursor: pointer;
+    transition: background 0.3s;
+    border: 1px solid black;
+}
+
+.black-key {
+    background: black;
+    height: 75%; /* Set height for black keys to 75% */
+    z-index: 1; /* To overlap the white keys */
+}
+
+
+.selected {
+    background: yellow; /* Highlight selected keys */
+}

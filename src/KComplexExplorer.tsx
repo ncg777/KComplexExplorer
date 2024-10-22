@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ListGroup, OverlayTrigger, Form, Popover, Button, Modal } from 'react-bootstrap';
 import { PCS12 } from './Objects/';
 import { SubsetOf, SupersetOf, Utils } from './Utils';
+import PCS12Identifier from './PCS12Identifier';
 import './KComplexExplorer.css';
 import * as Tone from 'tone';
 
@@ -20,6 +21,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const [showSubsetPopover, setShowSubsetPopover] = useState('');
     const [activeSuperset, setActiveSuperset] = useState<string | null>(null);
     const [activeSubset, setActiveSubset] = useState<string | null>(null);
+    const [showPcs12Modal, setShowPcs12Modal] = useState(false);
 
     // State for the help modal
     const [showHelpModal, setShowHelpModal] = useState(false);
@@ -200,7 +202,13 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                             ))}
                     </Form.Control>
                 </Form.Group>
-                {/* Help Button */}
+                <Button
+                    variant="info"
+                    style={{ position: 'absolute', right: '80px', top: '-5px' }}
+                    onClick={() => setShowPcs12Modal(true)}
+                >
+                    PCS12 from notes
+                </Button>
                 <Button
                     variant="info"
                     onClick={() => setShowHelpModal(true)}
@@ -404,6 +412,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                     </Button>
                 </Modal.Footer>
             </Modal>
+            <PCS12Identifier show={showPcs12Modal} onHide={() => setShowPcs12Modal(false)} />
         </div>
     );
 };
