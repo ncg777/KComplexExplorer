@@ -72,7 +72,7 @@ const PCS12Identifier: React.FC<{ show: boolean; onHide: () => void }> = ({ show
     return (
         <Modal show={show} onHide={onHide}>
             <Modal.Header closeButton>
-                <Modal.Title>PCS12 from Notes</Modal.Title>
+                <Modal.Title>Pitch class set from notes</Modal.Title>
             </Modal.Header>
             <Modal.Body>
                 {/* Octave Selector */}
