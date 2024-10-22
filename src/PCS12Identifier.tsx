@@ -30,6 +30,7 @@ const KEY_POSITIONS = [
 const PCS12Identifier: React.FC<{ show: boolean; onHide: () => void }> = ({ show, onHide }) => {
     const [selectedKeys, setSelectedKeys] = useState<Set<number>>(new Set());
     const [identifiedPCS12, setIdentifiedPCS12] = useState<PCS12>(PCS12.empty());
+    const [octave, setOctave] = useState<number>(6);
 
     const getSynth = useCallback(() => {
         return new Tone.PolySynth(Tone.Synth, {
@@ -43,9 +44,9 @@ const PCS12Identifier: React.FC<{ show: boolean; onHide: () => void }> = ({ show
     const playNote = useCallback((i:number) => {
         const now = Tone.now();
         const synth = getSynth();
-        const note = Tone.Frequency(i + 72, "midi").toNote(); 
+        const note = Tone.Frequency(i + octave*12, "midi").toNote(); 
         synth.triggerAttackRelease(note, 0.25, now);
-    },[getSynth]);
+    },[getSynth, octave]);
 
     const toggleKey = useCallback((key: number) => {
         const newSelectedKeys = new Set(selectedKeys);
@@ -73,6 +74,21 @@ const PCS12Identifier: React.FC<{ show: boolean; onHide: () => void }> = ({ show
                 <Modal.Title>PCS12 from Notes</Modal.Title>
             </Modal.Header>
             <Modal.Body>
+                {/* Octave Selector */}
+                <div style={{float:'right'}}>
+                    <strong>Select Octave: </strong>
+                    <select
+                        id="octaveSelect"
+                        value={octave}
+                        onChange={(e) => setOctave(Number(e.target.value))}
+                    >
+                        {[...Array(10).keys()].map(option => (
+                            <option key={option} value={option}>
+                                {option}
+                            </option>
+                        ))}
+                    </select>
+                </div>
                 <div>
                     <strong>Forte number: </strong>{identifiedPCS12.toForteNumberString()}<br />
                     <strong>Common name(s): </strong>{identifiedPCS12.getCommonName() || 'None'}<br />
