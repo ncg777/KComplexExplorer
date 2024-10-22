@@ -3,29 +3,21 @@ import Papa from 'papaparse';
 import { CustomComparisonChain, Ordering } from '../Utils';
 
 export class PCS12 extends ImmutableCombination {
-    private static ChordDict = new Map<string, PCS12>();
     private static ChordCombinationDict = new Map<string, PCS12>();
-    private static ForteNumbersDict = new Map<string, string>();
-    private static ForteNumbersRotationDict = new Map<string, number>();
+    private static ForteNumbersDict = new Map<PCS12, string>();
+    private static ForteNumbersRotationDict = new Map<PCS12, number>();
     private static ForteNumbersToPCS12Dict = new Map<string, PCS12>();
     private static ForteNumbersCommonNames = new Map<string, string>();
 
-    private m_Order: number | null;
-    private m_Transpose: number;
-
-    constructor(set: Set<number>, order: number | null, transpose: number) {
+    constructor(set: Set<number>) {
         super(Combination.createWithSizeAndSet(12, set));
-        this.m_Order = order;
-        this.m_Transpose = transpose;
     }
     public getIntervals() :number[] {
-      return this.transpose(-this.m_Transpose).getComposition().getCompositionAsArray();
-    }
-    public static parse(input: string): PCS12 | undefined {
-        return this.ChordDict.get(input);
+      return this.transpose(-this.getForteNumberRotation()).getComposition().getCompositionAsArray();
     }
 
     public static identify(input: ImmutableCombination): PCS12 {
+      if(input.isEmpty()) return PCS12.empty();
       if (input.getN() !== 12) {
         throw new Error("PCS12::IdentifyChord the combination is not bounded by 12");
       }
@@ -35,16 +27,16 @@ export class PCS12 extends ImmutableCombination {
       return this.ChordCombinationDict.get(input.combinationString())!; // Using non-null assertion since checked earlier
     }
     public static empty(): PCS12 {
-        return new PCS12(new Set<number>(), 1, 0);
+        return new PCS12(new Set<number>());
     }
 
     public static generate(): Set<PCS12> {
         const output = new Set<PCS12>();
         const necklaceSet = Necklace.generate(12, 2);
-        const orderCounts = Array(12).fill(0);
-
+        
         for (const necklace of necklaceSet) {
             const period = necklace.getPeriod();
+
             for (let j = 0; j < period; j++) {
                 const currentSet = new Set<number>();
                 for (let k = 0; k < 12; k++) {
@@ -52,20 +44,21 @@ export class PCS12 extends ImmutableCombination {
                         currentSet.add((12 - (k + 1) + j) % 12);
                     }
                 }
+                
                 if (currentSet.size > 0) {
-                    output.add(new PCS12(currentSet, orderCounts[currentSet.size - 1]++, j));
+                    output.add(new PCS12(currentSet));
                 }
             }
-            // Increment order count
-            orderCounts[necklace.length - 1] += 1;
+            
         }
         output.add(PCS12.empty());
         return output;
     }
 
-    public getForteNumber(): string | undefined {
-        const o = PCS12.ForteNumbersDict.get(this.toString());
-        return o;
+    public getForteNumber(): string {
+      if(this.isEmpty()) return "0-1";
+      const o = PCS12.ForteNumbersDict.get(this);
+      return o!!;
     }
 
     public getMean(): number {
@@ -91,15 +84,12 @@ export class PCS12 extends ImmutableCombination {
         return PCS12.identify(super.minus(other));
     }
 
-    public toString(): string {
-        return `${this.getK().toString().padStart(2, '0')}-${this.m_Order?.toString().padStart(2, '0')}.${this.m_Transpose.toString().padStart(2, '0')}`;
-    }
     public static getChords(): Set<PCS12> {
       const output = new Set<PCS12>();
   
       // Add all values from ChordDict to the output Set
-      for (let e of this.ChordDict) {
-          output.add(e[1]);
+      for (let e of this.ForteNumbersDict.keys()) {
+          output.add(e);
       }
       return output;
   }
@@ -117,8 +107,8 @@ export class PCS12 extends ImmutableCombination {
   
       const forteRows : string[][]= Papa.parse(forteNumbersData, { header: false }).data as string[][];
       
-      const forteNumbersDict = new Map<string, string>();
-      const forteNumbersRotationDict = new Map<string, number>();
+      const forteNumbersDict = new Map<PCS12, string>();
+      const forteNumbersRotationDict = new Map<PCS12, number>();
       const forteNumbersToPCS12Dict = new Map<string, PCS12>();
       const forteNumbersCommonNames = new Map<string, string>();
       for(let row of forteRows) {
@@ -128,16 +118,24 @@ export class PCS12 extends ImmutableCombination {
           const c = ImmutableCombination.createWithSizeAndSet(12, new Set<number>(ns));
           
           const pcs12 = PCS12.identify(c);
-          
-          for (let i = 12; i >=0; i--) {
+          if(pcs12.isEmpty()) {
+            forteNumbersDict.set(PCS12.empty(), "0-1");
+            forteNumbersRotationDict.set(PCS12.empty(), 0);
+            const str = "0-1.00";
+            
+            forteNumbersToPCS12Dict.set(str, PCS12.empty());
+          } else {
+            for (let i = 12; i >=0; i--) {
               const transposed = pcs12.transpose(i);
-              forteNumbersDict.set(transposed.toString(), forteNumber);
-              forteNumbersRotationDict.set(transposed.toString(), i);
+              forteNumbersDict.set(transposed, forteNumber);
+              forteNumbersRotationDict.set(transposed, i);
               const str = `${forteNumber}.${String(i).padStart(2, '0')}`;
               
               forteNumbersToPCS12Dict.set(str, transposed);
-              //if(transposed.getK() === 0 || transposed.getK()===12) break;
           }
+          }
+
+          
           
       }
       PCS12.ForteNumbersDict = forteNumbersDict
@@ -231,10 +229,11 @@ export class PCS12 extends ImmutableCombination {
   }
 
   public getForteNumberRotation(): number {
-    return PCS12.ForteNumbersRotationDict.get(this.toString()) as number;
+    if(this.isEmpty()) return 0;
+    return PCS12.ForteNumbersRotationDict.get(this) as number;
   }
 
-  public toForteNumberString(): string {
+  public toString(): string {
     const str = `${this.getForteNumber()}.${String(this.getForteNumberRotation()).padStart(2, '0')}`;
     return str;
   }
@@ -287,14 +286,11 @@ export class PCS12 extends ImmutableCombination {
   
   private static async generateMaps() {
       const chords = this.generate();
-      const chordDict = new Map<string, PCS12>();
       const chordCombinationDict = new Map<string, PCS12>();
 
       for (const chord of chords) {
-          chordDict.set(chord.toString(), chord);
           chordCombinationDict.set(chord.combinationString(), chord);
       }
-      PCS12.ChordDict = chordDict;
       PCS12.ChordCombinationDict = chordCombinationDict;
       await this.fillForteNumbersDict(); // Load forte numbers after generating chords
   }

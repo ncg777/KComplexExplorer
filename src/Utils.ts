@@ -166,5 +166,6 @@ class SupersetOf {
         return this.pCS12.intersect(input).getK() === this.pCS12.getK();
     }
 }
+
 // Export the Utils class statically
 export { Utils,CustomComparisonChain, Ordering, SubsetOf, SupersetOf };

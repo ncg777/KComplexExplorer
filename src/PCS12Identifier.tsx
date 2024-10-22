@@ -65,6 +65,7 @@ const PCS12Identifier: React.FC<{ show: boolean; onHide: () => void }> = ({ show
         const set = new Set(keys);
         const pcs12 = PCS12.identify(PCS12.createWithSizeAndSet(12, set));
         setIdentifiedPCS12(pcs12);
+        console.log(pcs12.toString())
     };
 
 
@@ -90,7 +91,7 @@ const PCS12Identifier: React.FC<{ show: boolean; onHide: () => void }> = ({ show
                     </select>
                 </div>
                 <div>
-                    <strong>Forte number: </strong>{identifiedPCS12.toForteNumberString()}<br />
+                    <strong>Forte number: </strong>{identifiedPCS12.toString()}<br />
                     <strong>Common name(s): </strong>{identifiedPCS12.getCommonName() || 'None'}<br />
                     <strong>Pitch classes: </strong>{identifiedPCS12.combinationString()}<br />
                     <strong>Intervals: </strong>{identifiedPCS12.getIntervals().map(x => String(x)).join(", ")}<br />

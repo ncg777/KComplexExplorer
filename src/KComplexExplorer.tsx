@@ -52,7 +52,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         const allChords = PCS12.getChords();
         const filteredChords = Array.from(allChords)
             .filter(pc => pred.apply(pc))
-            .sort((a, b) => PCS12.ReverseForteStringComparator(a.toForteNumberString(), b.toForteNumberString()));
+            .sort((a, b) => PCS12.ReverseForteStringComparator(a.toString(), b.toString()));
 
         setPcs12List(filteredChords);
     }, [selectedScale]);
@@ -77,13 +77,13 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
 
             const foundSupersets = Array.from(pcs12List)
             .filter(chord => supersetChecker.apply(chord))
-            .map(chord => chord.toForteNumberString()).sort(PCS12.ForteStringComparator);
+            .map(chord => chord.toString()).sort(PCS12.ForteStringComparator);
         
             setSupersets(foundSupersets);
             
             const foundSubsets = Array.from(pcs12List)
                 .filter(chord => subsetChecker.apply(chord))
-                .map(chord => chord.toForteNumberString()).sort(PCS12.ReverseForteStringComparator);
+                .map(chord => chord.toString()).sort(PCS12.ReverseForteStringComparator);
             
             setSubsets(foundSubsets);
         }
@@ -193,7 +193,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                         style={{margin:'0', paddingLeft:'5px', position:'absolute', left: '108px', top: '-5px',maxWidth: '150px'}}
                     >
                         {Array.from(PCS12.getChords())
-                            .map(ch => ch.toForteNumberString())
+                            .map(ch => ch.toString())
                             .sort(PCS12.ReverseForteStringComparator)
                             .map(chord => (
                                 <option key={chord} value={chord}>
@@ -228,12 +228,12 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                     return (
                                         chord && (
                                             <OverlayTrigger
-                                                key={`pcs12-${chord.toForteNumberString()}`}
+                                                key={`pcs12-${chord.toString()}`}
                                                 placement="top"
                                                 overlay={
-                                                    <Popover id={`pcspop-${chord.toForteNumberString()}`}>
+                                                    <Popover id={`pcspop-${chord.toString()}`}>
                                                         <Popover.Header>
-                                                                <strong>{chord.toForteNumberString()}</strong>
+                                                                <strong>{chord.toString()}</strong>
                                                                 <button type="button" className="close-button" onClick={(e) => {e.stopPropagation(); setShowPcsPopover('')}}>
                                                                     &times;
                                                                 </button>
@@ -251,18 +251,18 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                         </Popover.Body>
                                                     </Popover>
                                                 }
-                                                show={showPcsPopover === chord.toForteNumberString()}
+                                                show={showPcsPopover === chord.toString()}
                                                 trigger="click"
                                                 rootClose
                                             >
                                                 <ListGroup.Item
                                                     onClick={() => {
-                                                        handleSelect(chord.toForteNumberString());
-                                                        setShowPcsPopover(chord.toForteNumberString());
+                                                        handleSelect(chord.toString());
+                                                        setShowPcsPopover(chord.toString());
                                                     }}
-                                                    className={selectedPcs === chord.toForteNumberString() ? 'active' : ''}
+                                                    className={selectedPcs === chord.toString() ? 'active' : ''}
                                                 >
-                                                    {chord.toForteNumberString()}
+                                                    {chord.toString()}
                                                 </ListGroup.Item>
                                             </OverlayTrigger>
                                         )
@@ -284,9 +284,9 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                 key={`superset-${superset}`}
                                                 placement="top"
                                                 overlay={
-                                                    <Popover id={`pcspop-${supersetChord.toForteNumberString()}`}>
+                                                    <Popover id={`pcspop-${supersetChord.toString()}`}>
                                                         <Popover.Header>
-                                                                <strong>{supersetChord.toForteNumberString()}</strong>
+                                                                <strong>{supersetChord.toString()}</strong>
                                                                 <button type="button" className="close-button" onClick={(e) => {e.stopPropagation(); setShowSupersetPopover('')}}>
                                                                     &times;
                                                                 </button>
@@ -315,7 +315,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                     }}
                                                     className={activeSuperset === superset ? 'active' : ''}
                                                 >
-                                                    {supersetChord.toForteNumberString()}
+                                                    {supersetChord.toString()}
                                                 </ListGroup.Item>
                                             </OverlayTrigger>
                                         )
@@ -338,9 +338,9 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                 key={`subset-${subset}`}
                                                 placement="top"
                                                 overlay={
-                                                    <Popover id={`pcspop-${subsetChord.toForteNumberString()}`}>
+                                                    <Popover id={`pcspop-${subsetChord.toString()}`}>
                                                         <Popover.Header>
-                                                            <strong>{subsetChord.toForteNumberString()}</strong>
+                                                            <strong>{subsetChord.toString()}</strong>
                                                             <button type="button" className="close-button" onClick={(e) =>{e.stopPropagation(); setShowSubsetPopover('')}}>
                                                                 &times;
                                                             </button>
@@ -369,7 +369,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                     }}
                                                     className={activeSubset === subset ? 'active' : ''}
                                                 >
-                                                    {subsetChord.toForteNumberString()}
+                                                    {subsetChord.toString()}
                                                 </ListGroup.Item>
                                             </OverlayTrigger>
                                         )
