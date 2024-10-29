@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ListGroup, OverlayTrigger, Form, Popover, Button, Modal } from 'react-bootstrap';
 import { PCS12 } from './Objects/';
-import { SubsetOf, SupersetOf, Utils } from './Utils';
+import { SubsetOf, SupersetOf } from './Utils';
 import PCS12Identifier from './PCS12Identifier';
 import './KComplexExplorer.css';
 import * as Tone from 'tone';
@@ -158,11 +158,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         const synth = getSynth();
 
         let nums = chord.asSequence();
-        const r = chord.getForteNumberRotation();
-        const i = nums.indexOf(r,0);
-
-        nums = Utils.rotate(nums.map((n) => n < r ? n+12 :n), -i);
-        if(nums[0] >= 6) nums = nums.map(n => n-12);
+        
         if(down) nums = nums.reverse();
         // Calculate and play each note in the chord sequentially
         nums.forEach((pc, index) => {
@@ -175,9 +171,8 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const playChordSimul = useCallback((chord: PCS12) => {
         const now = Tone.now();
         const synth = getSynth();
-        const r = chord.getForteNumberRotation();
-        let nums = chord.asSequence().map((n) => n < r ? n+12:n);
-        if(nums[0] >= 6) nums = nums.map(n => n-12);
+        let nums = chord.asSequence();
+        
         synth.triggerAttackRelease(nums.map(pc => Tone.Frequency(pc + 72, "midi").toNote()), 1, now);
     },[getSynth]);
     
