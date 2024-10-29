@@ -202,7 +202,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                     style={{ position: 'absolute', right: '80px', top: '-5px' }}
                     onClick={() => setShowPcs12Modal(true)}
                 >
-                    Pitch class set from notes
+                    Identify
                 </Button>
                 <Button
                     variant="info"
