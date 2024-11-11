@@ -176,6 +176,10 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         synth.triggerAttackRelease(nums.map(pc => Tone.Frequency(pc + 72, "midi").toNote()), 1, now);
     },[getSynth]);
     
+    const copyToClipboard = useCallback(async (text: string) => {
+        await navigator.clipboard.writeText(text);
+    },[]);
+
     return (
         <div className="KComplexExplorer">
             <div className="header">
@@ -228,7 +232,15 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                 overlay={
                                                     <Popover id={`pcspop-${chord.toString()}`}>
                                                         <Popover.Header>
-                                                                <strong>{chord.toString()}</strong>
+                                                                <strong>{chord.toString()}
+                                                                <Button 
+                                                                    className="copybutton"
+                                                                    onClick={(e) => { 
+                                                                        e.stopPropagation(); 
+                                                                        copyToClipboard(chord.toString()); 
+                                                                    }}
+                                                                >📋</Button>
+                                                                </strong>
                                                                 <button type="button" className="close-button" onClick={(e) => {e.stopPropagation(); setShowPcsPopover('')}}>
                                                                     &times;
                                                                 </button>
@@ -281,7 +293,15 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                 overlay={
                                                     <Popover id={`pcspop-${supersetChord.toString()}`}>
                                                         <Popover.Header>
-                                                                <strong>{supersetChord.toString()}</strong>
+                                                                <strong>{supersetChord.toString()}
+                                                                <Button 
+                                                                className="copybutton"
+                                                                onClick={(e) => { 
+                                                                    e.stopPropagation(); 
+                                                                    copyToClipboard(supersetChord.toString()); 
+                                                                }}
+                                                                >📋</Button>
+                                                                </strong>
                                                                 <button type="button" className="close-button" onClick={(e) => {e.stopPropagation(); setShowSupersetPopover('')}}>
                                                                     &times;
                                                                 </button>
@@ -335,7 +355,15 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                 overlay={
                                                     <Popover id={`pcspop-${subsetChord.toString()}`}>
                                                         <Popover.Header>
-                                                            <strong>{subsetChord.toString()}</strong>
+                                                            <strong>{subsetChord.toString()}
+                                                            <Button 
+                                                                className="copybutton"
+                                                                onClick={(e) => { 
+                                                                    e.stopPropagation(); 
+                                                                    copyToClipboard(subsetChord.toString()); 
+                                                                }}
+                                                            >📋</Button>
+                                                            </strong>
                                                             <button type="button" className="close-button" onClick={(e) =>{e.stopPropagation(); setShowSubsetPopover('')}}>
                                                                 &times;
                                                             </button>
