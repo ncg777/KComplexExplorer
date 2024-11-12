@@ -3,6 +3,7 @@ import { Modal, Button } from 'react-bootstrap';
 import { PCS12 } from './Objects';
 import './Piano.css'; // Keep CSS for styling
 import * as Tone from 'tone';
+import './PCS12Identifier.css';
 
 // Define the hardcoded left positions for each key (in percentages)
 const WHITE_KEY_WIDTH = '14.2857%'; // 100% / 7 keys for a width of approximately 14.29% each

@@ -1,0 +1,29 @@
+/* PCS12Identifier.css */
+
+.modal-content {
+    background-color: #333; /* Dark background for the modal */
+    color: white; /* White text for readability */
+}
+
+.modal-header {
+    background-color: #444; /* Darker background for the header */
+    color: white; /* White text for the header */
+}
+
+.modal-body {
+    background-color: #333; /* Match body to avoid a two-tone look */
+    color: white; /* Ensures all body text is readable */
+}
+
+.modal-footer {
+    background-color: #444; /* Match footer with a slightly darker tone */
+    color: white; /* White text for footer items */
+}
+
+.close-button {
+    color: #fff; /* Ensure the close button is visible */
+}
+
+.close-button:hover {
+    color: #ff0000; /* Change close button color on hover for visibility */
+}
