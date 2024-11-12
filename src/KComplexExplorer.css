@@ -3,6 +3,7 @@
     flex-direction: column;
     width: 100%;
     height: 100%;
+    color: white; /* Set text color to white for readability */
 }
 /* General styles for headings */
 h3,
@@ -11,16 +12,15 @@ h4 {
     margin:0;
     margin-bottom: 8px;
 }
-.kcomplex-table {
-    width: 100%;
-    border-collapse: collapse;
-    border: 0;
-    margin:0;
+/* Ensure headers and table backgrounds support readability */
+.kcomplex-table th {
+    background-color: #f2f2f2; /* Light background for table headers */
+    color: black; /* Change text color to black */
 }
 .kcomplex-table th,
 .kcomplex-table td {
-    /* border: 1px solid #ddd; REMOVE THESE LINES */
-    padding-left: 8px;
+    background-color: #333; /* Dark background for table data */
+    color: white; /* White text for table data */
 }
 
 .kcomplex-table th {
@@ -40,20 +40,21 @@ h4 {
 .scrollable-list {
     height: 100%;
     overflow-y: auto;  /* Enable vertical scrolling */
-    border: 0; /* Border color matching Bootstrap */
+    border: 0; /* No border */
     border-radius: .25rem; /* Rounded corners */
-    background-color: #ffffff; /* Optional: set the background color */
-    box-shadow: 0 0 0.25rem rgba(0, 0, 0, 0.1); /* Optional: add a subtle shadow */
-    max-width: 400px; /* Set a max width to limit horizontal stretch */
-} 
+    background-color: #222; /* Dark background for the list */
+    color: white; /* White text color for the list items */
+}
 
 .scrollable-list .list-group-item {
     text-align: left;
     margin-left: 5px;
     cursor: pointer; /* Change cursor on hover */
+    background-color: #333; /* Dark background for list items */
+    color: white; /* White text for list items */
 }
 .scrollable-list .list-group-item:hover {
-    background-color: #f8f9fa; /* Change background color on hover */
+    background-color: #444; /* Slightly lighter background on hover */
 }
 .scrollable-list .list-group-item.active {
     background-color: #007bff; /* Background color when item is active/selected */
@@ -66,23 +67,24 @@ h4 {
     }
 }
 .popover {
-    background-color: white;
-    max-width: 300px;
-    /* Add optional margin if necessary */
-    margin: 10px;  /* This can help with positioning slightly */
-    border: 1px solid black !important;
+    background-color: #444; /* Dark background for the popover */
+    color: white; /* White text for readability */
+    border: 1px solid #222; /* Optional border color */
 }
 
-/* Optional: Style the popover header */
 .popover .popover-header {
-    display: flex; /* Flexbox for header layout */
-    align-items: center; /* Center items vertically */
-    justify-content: space-between; /* Space between title and close button */
-    padding-left: 10px; /* Padding for header */
+    background-color: #555; /* Darker background for the header */
+    color: white; /* Maintain white text for visibility */
 }
 
 .popover .popover-body {
-    padding: 10px; /* Optional: adjust padding inside the popover */
+    padding: 10px; /* Adjust padding for body content */
+    color: white; /* Ensure all body text is white */
+}
+
+/* Optional: Provide a transition effect when showing the popover */
+.popover {
+    transition: opacity 0.3s ease;
 }
 
 .close-button {
