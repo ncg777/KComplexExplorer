@@ -183,7 +183,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     return (
         <div className="KComplexExplorer">
             <div className="header">
-                <Form.Group controlId="scaleSelect" style={{ textAlign: 'left', paddingLeft:'8px', marginBottom: '1em' }}>
+                <Form.Group controlId="scaleSelect" style={{ textAlign: 'left', paddingLeft:'1em', marginBottom: '1em' }}>
                     <Form.Label><strong>Select Scale </strong></Form.Label>
                     <Form.Control
                         as="select"
