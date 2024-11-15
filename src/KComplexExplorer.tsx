@@ -184,12 +184,12 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         <div className="KComplexExplorer">
             <div className="header">
                 <Form.Group controlId="scaleSelect" style={{ textAlign: 'left', paddingLeft:'1em', marginBottom: '1em' }}>
-                    <Form.Label><strong>Select Upper Bound: </strong></Form.Label>
+                    <Form.Label><strong>Upper Bound: </strong></Form.Label>
                     <Form.Control
                         as="select"
                         value={selectedScale}
                         onChange={(e) => handleScaleChange(e.target.value)}
-                        style={{margin:'0', paddingLeft:'5px', position:'absolute', left: '108px', top: '-5px',maxWidth: '150px'}}
+                        style={{margin:'0', paddingLeft:'5px', position:'absolute', left: '130px', top: '-5px',maxWidth: '150px'}}
                     >
                         {Array.from(PCS12.getChords())
                             .map(ch => ch.toString())
