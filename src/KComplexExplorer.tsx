@@ -184,7 +184,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         <div className="KComplexExplorer">
             <div className="header">
                 <Form.Group controlId="scaleSelect" style={{ textAlign: 'left', paddingLeft:'1em', marginBottom: '1em' }}>
-                    <Form.Label><strong>Select Scale </strong></Form.Label>
+                    <Form.Label><strong>Select Upper Bound: </strong></Form.Label>
                     <Form.Control
                         as="select"
                         value={selectedScale}
