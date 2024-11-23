@@ -10,6 +10,12 @@ interface KComplexExplorerProps {
     scale: string;
 }
 
+const synth = new Tone.PolySynth(Tone.Synth, {
+    oscillator: {
+        type: 'triangle',
+        }
+    }).toDestination();
+    
 const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const [pcs12List, setPcs12List] = useState<PCS12[]>([]);
     const [supersets, setSupersets] = useState<string[]>([]);
@@ -22,7 +28,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const [activeSuperset, setActiveSuperset] = useState<string | null>(null);
     const [activeSubset, setActiveSubset] = useState<string | null>(null);
     const [showPcs12Modal, setShowPcs12Modal] = useState(false);
-
+    
     // State for the help modal
     const [showHelpModal, setShowHelpModal] = useState(false);
 
@@ -30,19 +36,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const pcsListRef = useRef<HTMLDivElement>(null);
     const supersetsRef = useRef<HTMLDivElement>(null);
     const subsetsRef = useRef<HTMLDivElement>(null);
-
-    
-    
-    // Create a poly synth with sine wave
-    const getSynth = useCallback(() => {
-        return new Tone.PolySynth(Tone.Synth, {
-        oscillator: {
-            type: 'triangle',
-            }
-        }
-        ).toDestination()
-    },[]);
-    
+   
     const refreshPcs = useCallback(() => {
         if (!PCS12 || !PCS12.isInitialized()) return;
 
@@ -155,7 +149,6 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
 
     const playChordSeq = useCallback((chord: PCS12, down:boolean = false) => {
         const now = Tone.now();
-        const synth = getSynth();
 
         let nums = chord.asSequence();
         
@@ -166,15 +159,14 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
             synth.triggerAttackRelease(note, 0.25, now + index * 0.25); 
         });
 
-    },[getSynth]);
+    },[]);
     
     const playChordSimul = useCallback((chord: PCS12) => {
         const now = Tone.now();
-        const synth = getSynth();
         let nums = chord.asSequence();
         
         synth.triggerAttackRelease(nums.map(pc => Tone.Frequency(pc + 72, "midi").toNote()), 1, now);
-    },[getSynth]);
+    },[]);
     
     const copyToClipboard = useCallback(async (text: string) => {
         await navigator.clipboard.writeText(text);
