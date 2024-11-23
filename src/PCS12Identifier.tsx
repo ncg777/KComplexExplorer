@@ -32,22 +32,17 @@ const PCS12Identifier: React.FC<{ show: boolean; onHide: () => void }> = ({ show
     const [selectedKeys, setSelectedKeys] = useState<Set<number>>(new Set());
     const [identifiedPCS12, setIdentifiedPCS12] = useState<PCS12>(PCS12.empty());
     const [octave, setOctave] = useState<number>(6);
-
-    const getSynth = useCallback(() => {
-        return new Tone.PolySynth(Tone.Synth, {
+    const synth = new Tone.PolySynth(Tone.Synth, {
         oscillator: {
             type: 'triangle',
             }
-        }
-        ).toDestination()
-    },[]);
+        }).toDestination();
 
     const playNote = useCallback((i:number) => {
         const now = Tone.now();
-        const synth = getSynth();
         const note = Tone.Frequency(i + octave*12, "midi").toNote(); 
         synth.triggerAttackRelease(note, 0.25, now);
-    },[getSynth, octave]);
+    },[octave]);
 
     const toggleKey = useCallback((key: number) => {
         const newSelectedKeys = new Set(selectedKeys);
@@ -68,8 +63,7 @@ const PCS12Identifier: React.FC<{ show: boolean; onHide: () => void }> = ({ show
         setIdentifiedPCS12(pcs12);
         console.log(pcs12.toString())
     };
-
-
+    
     return (
         <Modal show={show} onHide={onHide}>
             <Modal.Header closeButton>
