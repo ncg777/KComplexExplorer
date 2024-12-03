@@ -6387,7 +6387,7 @@ jsonpointer@^5.0.0:
     object.values "^1.1.6"
 
 "kcomplex-explorer@file:":
-  version "2024.11.15"
+  version "2024.12.03"
   resolved "file:"
   dependencies:
     "@testing-library/jest-dom" "^5.14.1"
