@@ -25,7 +25,12 @@
     z-index: 1; /* To overlap the white keys */
 }
 
-
-.selected {
-    background: yellow; /* Highlight selected keys */
+.selected::after {
+    content: "∈";
+    position: absolute;
+    bottom: -17px;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 23px;
+    color:#888;
 }
