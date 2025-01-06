@@ -5,16 +5,11 @@ import { SubsetOf, SupersetOf } from './Utils';
 import PCS12Identifier from './PCS12Identifier';
 import './KComplexExplorer.css';
 import * as Tone from 'tone';
+import { useSynth } from './SynthContext'; // Import the useSynth hook
 
 interface KComplexExplorerProps {
     scale: string;
 }
-
-const synth = new Tone.PolySynth(Tone.Synth, {
-    oscillator: {
-        type: 'triangle',
-        }
-    }).toDestination();
     
 const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const [pcs12List, setPcs12List] = useState<PCS12[]>([]);
@@ -36,7 +31,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const pcsListRef = useRef<HTMLDivElement>(null);
     const supersetsRef = useRef<HTMLDivElement>(null);
     const subsetsRef = useRef<HTMLDivElement>(null);
-   
+    const synth = useSynth();
     const refreshPcs = useCallback(() => {
         if (!PCS12 || !PCS12.isInitialized()) return;
 
@@ -159,14 +154,14 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
             synth.triggerAttackRelease(note, 0.25, now + index * 0.25); 
         });
 
-    },[]);
+    },[synth]);
     
     const playChordSimul = useCallback((chord: PCS12) => {
         const now = Tone.now();
         let nums = chord.asSequence();
         
         synth.triggerAttackRelease(nums.map(pc => Tone.Frequency(pc + 72, "midi").toNote()), 1, now);
-    },[]);
+    },[synth]);
     
     const copyToClipboard = useCallback(async (text: string) => {
         await navigator.clipboard.writeText(text);

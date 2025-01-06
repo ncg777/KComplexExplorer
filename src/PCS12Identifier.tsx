@@ -4,6 +4,7 @@ import { PCS12 } from './Objects';
 import './Piano.css'; // Keep CSS for styling
 import * as Tone from 'tone';
 import './PCS12Identifier.css';
+import { useSynth } from './SynthContext'; // Import the useSynth hook
 
 // Define the hardcoded left positions for each key (in percentages)
 const WHITE_KEY_WIDTH = '14.2857%'; // 100% / 7 keys for a width of approximately 14.29% each
@@ -32,17 +33,12 @@ const PCS12Identifier: React.FC<{ show: boolean; onHide: () => void }> = ({ show
     const [selectedKeys, setSelectedKeys] = useState<Set<number>>(new Set());
     const [identifiedPCS12, setIdentifiedPCS12] = useState<PCS12>(PCS12.empty());
     const [octave, setOctave] = useState<number>(6);
-    const synth = new Tone.PolySynth(Tone.Synth, {
-        oscillator: {
-            type: 'triangle',
-            }
-        }).toDestination();
-
+    const synth = useSynth();
     const playNote = useCallback((i:number) => {
         const now = Tone.now();
         const note = Tone.Frequency(i + octave*12, "midi").toNote(); 
         synth.triggerAttackRelease(note, 0.25, now);
-    },[octave]);
+    },[octave, synth]);
 
     const toggleKey = useCallback((key: number) => {
         const newSelectedKeys = new Set(selectedKeys);
@@ -61,7 +57,6 @@ const PCS12Identifier: React.FC<{ show: boolean; onHide: () => void }> = ({ show
         const set = new Set(keys);
         const pcs12 = PCS12.identify(PCS12.createWithSizeAndSet(12, set));
         setIdentifiedPCS12(pcs12);
-        console.log(pcs12.toString())
     };
     
     return (
