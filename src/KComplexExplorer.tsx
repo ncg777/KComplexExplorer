@@ -239,9 +239,9 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                                 <Button className="playbutton" onClick={(e) => {e.stopPropagation(); playChordSimul(chord);}}>Simul</Button><br />
                                                             <strong>Common name(s): </strong>{chord.getCommonName() || 'None'}<br />
                                                             <strong>Pitch classes: </strong>{chord.combinationString()}<br />
-                                                            <strong>Intervals: </strong>{chord.getIntervals().map(x => String(x)).join(", ")}<br />
-                                                            <strong>Interval vector: </strong>{chord.getIntervalVector()?.join(', ') || '[]'}<br />
-                                                            <strong>Symmetries: </strong>{chord.getSymmetries().map(x => String(x)).join(", ") || "None"}
+                                                            <strong>Intervals: </strong>{chord.getIntervals().map(x => String(x)).join(" ")}<br />
+                                                            <strong>Interval vector: </strong>{chord.getIntervalVector()?.join(' ') || '[]'}<br />
+                                                            <strong>Symmetries: </strong>{chord.getSymmetries().map(x => String(x)).join(" ") || "None"}
                                                         </Popover.Body>
                                                     </Popover>
                                                 }
@@ -300,9 +300,9 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                                 <Button className="playbutton" onClick={(e) => {e.stopPropagation(); playChordSimul(supersetChord);}}>Simul</Button><br />
                                                             <strong>Common name(s): </strong>{supersetChord.getCommonName() || 'None'}<br />
                                                             <strong>Pitch classes: </strong>{supersetChord.combinationString()}<br />
-                                                            <strong>Intervals: </strong>{supersetChord.getIntervals().map(x => String(x)).join(", ")}<br />
-                                                            <strong>Interval vector: </strong>{supersetChord.getIntervalVector()?.join(', ') || '[]'}<br />
-                                                            <strong>Symmetries: </strong>{supersetChord.getSymmetries().map(x => String(x)).join(", ") || "None"}
+                                                            <strong>Intervals: </strong>{supersetChord.getIntervals().map(x => String(x)).join(" ")}<br />
+                                                            <strong>Interval vector: </strong>{supersetChord.getIntervalVector()?.join(' ') || '[]'}<br />
+                                                            <strong>Symmetries: </strong>{supersetChord.getSymmetries().map(x => String(x)).join(" ") || "None"}
                                                         </Popover.Body>
                                                     </Popover>
                                                 }
@@ -362,9 +362,9 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                                 <Button className="playbutton" onClick={(e) => {e.stopPropagation(); playChordSimul(subsetChord);}}>Simul</Button><br />
                                                             <strong>Common name(s): </strong>{subsetChord.getCommonName() || 'None'}<br />
                                                             <strong>Pitch classes: </strong>{subsetChord.combinationString()}<br />
-                                                            <strong>Intervals: </strong>{subsetChord.getIntervals().map(x => String(x)).join(", ")}<br />
-                                                            <strong>Interval vector: </strong>{subsetChord.getIntervalVector()?.join(', ') || '[]'}<br />
-                                                            <strong>Symmetries: </strong>{subsetChord.getSymmetries().map(x => String(x)).join(", ") || "None"}
+                                                            <strong>Intervals: </strong>{subsetChord.getIntervals().map(x => String(x)).join(" ")}<br />
+                                                            <strong>Interval vector: </strong>{subsetChord.getIntervalVector()?.join(' ') || '[]'}<br />
+                                                            <strong>Symmetries: </strong>{subsetChord.getSymmetries().map(x => String(x)).join(" ") || "None"}
                                                         </Popover.Body>
                                                     </Popover>
                                                 }
