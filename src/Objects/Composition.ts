@@ -107,7 +107,7 @@ export class Composition extends Combination {
 
 
     toString(): string {
-        return "{"+this.getCompositionAsArray().join(",") + "}";
+        return this.getCompositionAsArray().join(" ");
     }
 
 }

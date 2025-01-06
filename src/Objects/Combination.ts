@@ -39,7 +39,7 @@ export class Combination extends BitSet {
         return o;
     }
     public combinationString(): string {
-        const str = Array.from(this.getTrueBits()).map((s) => s.toString()).join(", ");
+        const str = Array.from(this.getTrueBits()).map((s) => s.toString()).join(" ");
         return str;
     }
     public getComposition(): Composition {
