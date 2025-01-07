@@ -159,8 +159,8 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const playChordSimul = useCallback((chord: PCS12) => {
         const now = Tone.now();
         let nums = chord.asSequence();
-        
-        synth.triggerAttackRelease(nums.map(pc => Tone.Frequency(pc + 72, "midi").toNote()), 1, now);
+        const vel = Math.sqrt(1.0/chord.getK());
+        synth.triggerAttackRelease(nums.map(pc => Tone.Frequency(pc + 72, "midi").toNote()), 1, now, vel);
     },[synth]);
     
     const copyToClipboard = useCallback(async (text: string) => {
