@@ -1,7 +1,7 @@
 {
   "name": "kcomplex-explorer",
   "homepage": "https://ncg777.github.io/KComplexExplorer",
-  "version": "2025.01.06",
+  "version": "2025.01.07",
   "private": true,
   "dependencies": {
     "@testing-library/jest-dom": "^5.14.1",
@@ -48,8 +48,11 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@babel/plugin-syntax-flow": "^7.24.7",
+    "@babel/plugin-transform-private-property-in-object": "^7.25.9",
     "@babel/plugin-transform-react-jsx": "^7.25.2",
+    "@popperjs/core": "^2.11.8",
     "@testing-library/dom": "^10.4.0",
     "@types/papaparse": "^5.3.14",
     "@types/react-bootstrap": "^0.32.37"

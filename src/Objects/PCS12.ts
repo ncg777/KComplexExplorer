@@ -1,6 +1,7 @@
 import { Necklace, Combination, ImmutableCombination } from '.';
 import Papa from 'papaparse';
 import { CustomComparisonChain, Ordering } from '../Utils';
+import {COMMON_NAMES,FORTE_NUMBERS} from '../ForteCSV';
 
 export class PCS12 extends ImmutableCombination {
     private static ChordCombinationDict = new Map<string, PCS12>();
@@ -94,18 +95,7 @@ export class PCS12 extends ImmutableCombination {
       return output;
   }
     private static async fillForteNumbersDict() {
-      const forteNumbersFilePath = '/KComplexExplorer/resources/ForteNumbers.csv';
-      const forteNumbersCommonNamesFilePath = '/KComplexExplorer/resources/ForteNumbers_CommonNames.csv';
-  
-      // Load Forte Numbers
-      const forteNumbersData = await fetch(forteNumbersFilePath).then(response => {
-          if (!response.ok) {
-              throw new Error('Network response was not ok');
-          }
-          return response.text();
-      });
-  
-      const forteRows : string[][]= Papa.parse(forteNumbersData, { header: false }).data as string[][];
+      const forteRows : string[][]= Papa.parse(FORTE_NUMBERS, { header: false }).data as string[][];
       
       const forteNumbersDict = new Map<PCS12, string>();
       const forteNumbersRotationDict = new Map<PCS12, number>();
@@ -132,22 +122,14 @@ export class PCS12 extends ImmutableCombination {
               const str = `${forteNumber}.${String(i).padStart(2, '0')}`;
               
               forteNumbersToPCS12Dict.set(str, transposed);
-          }
-          }
-
-          
-          
+            }
+          } 
       }
       PCS12.ForteNumbersDict = forteNumbersDict
       PCS12.ForteNumbersRotationDict = forteNumbersRotationDict;
       PCS12.ForteNumbersToPCS12Dict = forteNumbersToPCS12Dict;
-      const forteNamesData = await fetch(forteNumbersCommonNamesFilePath).then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return response.text();
-      });
-      const forteNamesRows : string[][]= Papa.parse(forteNamesData, { header: false }).data as string[][];
+      
+      const forteNamesRows : string[][]= Papa.parse(COMMON_NAMES, { header: false }).data as string[][];
 
       for(let row of forteNamesRows) {
         const forteNumber = row[0];

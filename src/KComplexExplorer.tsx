@@ -182,7 +182,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                             .map(ch => ch.toString())
                             .sort(PCS12.ReverseForteStringComparator)
                             .map(chord => (
-                                <option key={chord} value={chord}>
+                                <option key={`scale${chord}`} value={chord}>
                                     {chord}
                                 </option>
                             ))}
