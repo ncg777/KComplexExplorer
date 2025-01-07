@@ -110,9 +110,9 @@ class Ordering {
 
   
 class CustomComparisonChain<T> {
-    private comparisons: Array<(a: T, b: T) => number> = [];
-    private a!: T; // Storing the first value, using non-null assertion
-    private b!: T; // Storing the second value, using non-null assertion
+    private comparisons: Array<() => number> = [];
+    private a!: T;
+    private b!: T;
 
     static start<T>(): CustomComparisonChain<T> {
         return new CustomComparisonChain<T>();
@@ -126,14 +126,13 @@ class CustomComparisonChain<T> {
     }
 
     compare(comparator: (x: T, y: T) => number): this {
-        // Store a comparison function that takes the stored a and b
-        this.comparisons.push((x, y) => comparator(this.a, this.b));
-        return this; // for method chaining
+        this.comparisons.push(() => comparator(this.a, this.b));
+        return this;
     }
 
     result(): number {
         for (const compareFn of this.comparisons) {
-            const comparisonResult = compareFn(this.a, this.b); // Execute the comparison
+            const comparisonResult = compareFn(); // Execute the comparison
             if (comparisonResult !== 0) {
                 return comparisonResult; // Return first non-zero comparison result
             }
@@ -141,6 +140,7 @@ class CustomComparisonChain<T> {
         return 0; // If all comparisons are equal
     }
 }
+
 class SubsetOf {
     private pCS12: PCS12;
 
