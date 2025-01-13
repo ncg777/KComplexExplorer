@@ -176,7 +176,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                         as="select"
                         value={selectedScale}
                         onChange={(e) => handleScaleChange(e.target.value)}
-                        style={{margin:'0', paddingLeft:'5px', position:'absolute', left: '130px', top: '-5px',maxWidth: '150px'}}
+                        style={{margin:'0', paddingLeft:'5px', position:'absolute', left: '130px', top: '-5px',maxWidth: '12ch'}}
                     >
                         {Array.from(PCS12.getChords())
                             .map(ch => ch.toString())
