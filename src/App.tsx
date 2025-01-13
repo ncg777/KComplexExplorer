@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import './App.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import KComplexExplorer from './KComplexExplorer';
-import { PCS12 } from './objects22';
+import { PCS12 } from './objects';
 
 function App() {
     const [isInitialized, setIsInitialized] = useState(false);

@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { Modal, Button } from 'react-bootstrap';
-import { PCS12 } from './objects22';
+import { PCS12 } from './objects';
 import './Piano.css'; // Keep CSS for styling
 import * as Tone from 'tone';
 import './PCS12Identifier.css';
