@@ -13,7 +13,6 @@
     "@types/react-dom": "^18.3.0",
     "bootstrap": "^5.3.3",
     "kcomplex-explorer": "file:",
-    "papaparse": "^5.4.1",
     "react": "^18.3.1",
     "react-bootstrap": "^2.10.4",
     "react-dom": "^18.3.1",
@@ -54,7 +53,6 @@
     "@babel/plugin-transform-react-jsx": "^7.25.2",
     "@popperjs/core": "^2.11.8",
     "@testing-library/dom": "^10.4.0",
-    "@types/papaparse": "^5.3.14",
     "@types/react-bootstrap": "^0.32.37"
   }
 }

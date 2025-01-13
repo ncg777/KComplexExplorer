@@ -1,12 +1,11 @@
-import { Necklace, Combination, ImmutableCombination } from '.';
-import Papa from 'papaparse';
 import { CustomComparisonChain, Ordering } from '../Utils';
 import {COMMON_NAMES,FORTE_NUMBERS} from '../ForteCSV';
+import { Necklace, Combination, ImmutableCombination } from '.';
 
 export class PCS12 extends ImmutableCombination {
     private static ChordCombinationDict = new Map<string, PCS12>();
-    private static ForteNumbersDict = new Map<PCS12, string>();
-    private static ForteNumbersRotationDict = new Map<PCS12, number>();
+    private static ForteNumbersDict = new Map<string, string>();
+    private static ForteNumbersRotationDict = new Map<string, number>();
     private static ForteNumbersToPCS12Dict = new Map<string, PCS12>();
     private static ForteNumbersCommonNames = new Map<string, string>();
 
@@ -16,7 +15,7 @@ export class PCS12 extends ImmutableCombination {
     public getIntervals() :number[] {
       return this.transpose(-this.getForteNumberRotation()).getComposition().getCompositionAsArray();
     }
-
+  
     public static identify(input: ImmutableCombination): PCS12 {
       if(input.isEmpty()) return PCS12.empty();
       if (input.getN() !== 12) {
@@ -58,7 +57,7 @@ export class PCS12 extends ImmutableCombination {
 
     public getForteNumber(): string {
       if(this.isEmpty()) return "0-1";
-      const o = PCS12.ForteNumbersDict.get(this);
+      const o = PCS12.ForteNumbersDict.get(this.combinationString());
       return o!!;
     }
 
@@ -88,17 +87,18 @@ export class PCS12 extends ImmutableCombination {
     public static getChords(): Set<PCS12> {
       const output = new Set<PCS12>();
   
-      // Add all values from ChordDict to the output Set
-      for (let e of this.ForteNumbersDict.keys()) {
+      for (let e of this.ChordCombinationDict.values()) {
           output.add(e);
       }
       return output;
   }
     private static async fillForteNumbersDict() {
-      const forteRows : string[][]= Papa.parse(FORTE_NUMBERS, { header: false }).data as string[][];
+      const forteRows : string[][]= FORTE_NUMBERS
+        .split("\n")
+        .map(l => l.split(",").map(s => s.replace(/"/g,'')));
       
-      const forteNumbersDict = new Map<PCS12, string>();
-      const forteNumbersRotationDict = new Map<PCS12, number>();
+      const forteNumbersDict = new Map<string, string>();
+      const forteNumbersRotationDict = new Map<string, number>();
       const forteNumbersToPCS12Dict = new Map<string, PCS12>();
       const forteNumbersCommonNames = new Map<string, string>();
       for(let row of forteRows) {
@@ -109,16 +109,16 @@ export class PCS12 extends ImmutableCombination {
           
           const pcs12 = PCS12.identify(c);
           if(pcs12.isEmpty()) {
-            forteNumbersDict.set(PCS12.empty(), "0-1");
-            forteNumbersRotationDict.set(PCS12.empty(), 0);
+            forteNumbersDict.set(PCS12.empty().combinationString(), "0-1");
+            forteNumbersRotationDict.set(PCS12.empty().combinationString(), 0);
             const str = "0-1.00";
             
             forteNumbersToPCS12Dict.set(str, PCS12.empty());
           } else {
             for (let i = 12; i >=0; i--) {
               const transposed = pcs12.transpose(i);
-              forteNumbersDict.set(transposed, forteNumber);
-              forteNumbersRotationDict.set(transposed, i);
+              forteNumbersDict.set(transposed.combinationString(), forteNumber);
+              forteNumbersRotationDict.set(transposed.combinationString(), i);
               const str = `${forteNumber}.${String(i).padStart(2, '0')}`;
               
               forteNumbersToPCS12Dict.set(str, transposed);
@@ -129,7 +129,9 @@ export class PCS12 extends ImmutableCombination {
       PCS12.ForteNumbersRotationDict = forteNumbersRotationDict;
       PCS12.ForteNumbersToPCS12Dict = forteNumbersToPCS12Dict;
       
-      const forteNamesRows : string[][]= Papa.parse(COMMON_NAMES, { header: false }).data as string[][];
+      const forteNamesRows : string[][]= COMMON_NAMES
+        .split("\n")
+        .map(l => l.split(",").map(s => s.replace(/"/g,'')));
 
       for(let row of forteNamesRows) {
         const forteNumber = row[0];
@@ -212,7 +214,7 @@ export class PCS12 extends ImmutableCombination {
 
   public getForteNumberRotation(): number {
     if(this.isEmpty()) return 0;
-    return PCS12.ForteNumbersRotationDict.get(this) as number;
+    return PCS12.ForteNumbersRotationDict.get(this.combinationString()) as number;
   }
 
   public toString(): string {
