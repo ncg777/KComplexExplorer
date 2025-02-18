@@ -12,7 +12,7 @@ export const SynthProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             type: 'triangle',
         },
     }).toDestination();
-
+    synth.context.lookAhead = 0.5;
     return (
         <SynthContext.Provider value={synth}>
             {children}
