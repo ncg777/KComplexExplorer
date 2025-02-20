@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ListGroup, OverlayTrigger, Form, Popover, Button, Modal } from 'react-bootstrap';
-import { PCS12 } from './objects';
-import { SubsetOf, SupersetOf } from './Utils';
+import { PCS12 } from 'ultra-mega-enumerator';
+import { SubsetOf, SupersetOf } from 'ultra-mega-enumerator';
 import PCS12Identifier from './PCS12Identifier';
 import './KComplexExplorer.css';
 import * as Tone from 'tone';

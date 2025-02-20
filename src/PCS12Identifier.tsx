@@ -1,19 +1,17 @@
 import React, { useCallback, useState } from 'react';
 import { Modal, Button } from 'react-bootstrap';
-import { PCS12 } from './objects';
-import './Piano.css'; // Keep CSS for styling
+import { PCS12 } from 'ultra-mega-enumerator';
+import './Piano.css';
 import * as Tone from 'tone';
 import './PCS12Identifier.css';
-import { useSynth } from './SynthContext'; // Import the useSynth hook
+import { useSynth } from './SynthContext';
 
-// Define the hardcoded left positions for each key (in percentages)
-const WHITE_KEY_WIDTH = '14.2857%'; // 100% / 7 keys for a width of approximately 14.29% each
-const BLACK_KEY_WIDTH = '8%'; // Black keys are narrower
-const BLACK_KEY_HEIGHT = '75%'; // Height for black keys
+const WHITE_KEY_WIDTH = '14.2857%';
+const BLACK_KEY_WIDTH = '8%';
+const BLACK_KEY_HEIGHT = '75%';
 
 const BLACK_KEYS = [1,3,6,8,10];
 
-// Define key positions for black keys based on their offsets from the white keys
 const KEY_POSITIONS = [
     '0%',    // C
     '14.2857%',    // C#
