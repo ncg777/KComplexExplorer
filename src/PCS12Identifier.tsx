@@ -116,7 +116,8 @@ const PCS12Identifier: React.FC<{ show: boolean; onHide: () => void }> = ({ show
                     <strong>Pitch classes: </strong>{identifiedPCS12.combinationString()}<br />
                     <strong>Intervals: </strong>{identifiedPCS12.getIntervals().map(x => String(x)).join(" ")}<br />
                     <strong>Interval vector: </strong>{identifiedPCS12.getIntervalVector()?.join(' ') || '[]'}<br />
-                    <strong>Symmetries: </strong>{identifiedPCS12.getSymmetries().map(x => String(x)).join(" ") || "None"}
+                    <strong>Symmetries: </strong>{identifiedPCS12.getSymmetries().map(x => String(x)).join(" ") || "None"}<br />
+                    <strong>Keys: </strong>{identifiedPCS12.getPotentialKeys().map(x => String(x)).join(" ") || "None"}
                 </div>
             </Modal.Body>
             <Modal.Footer>

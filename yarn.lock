@@ -9419,10 +9419,10 @@ typescript@^4.4.2:
   resolved "https://registry.npmjs.org/typescript/-/typescript-4.9.5.tgz"
   integrity sha512-1FXk9E2Hm+QzZQ7z+McJiHL4NW1F2EzMu9Nq9i3zAaGqibafqYwCVU6WyWAuyQRRzOlxou8xZSyXLEN8oKj24g==
 
-ultra-mega-enumerator@^2025.2.23:
-  version "2025.2.23"
-  resolved "https://registry.yarnpkg.com/ultra-mega-enumerator/-/ultra-mega-enumerator-2025.2.23.tgz#099df71ff6b2f3400fb897135f707271d1703789"
-  integrity sha512-JqBuKTlz1WN4H7EF3nnyaI77K3B+cN+8FfAVUU+Gjpj2Ik4hFJFXoSj0/P3ce/KaDBNGIS24DJWnfPjpU3FmEg==
+ultra-mega-enumerator@^2025.2.26:
+  version "2025.2.26"
+  resolved "https://registry.yarnpkg.com/ultra-mega-enumerator/-/ultra-mega-enumerator-2025.2.26.tgz#c863651c849d43ea35e21d0a534019a110cfdfad"
+  integrity sha512-iLVu9NhMSe7if8F4AvV0ps2Wv89wcI2+VHu3vKDWxaRSTHtVWTFhaBf85ECiwF0fWgyBLyE/bzdyiYKhp1rjOA==
   dependencies:
     "@types/node" "^22.5.1"
     yarn "^1.22.22"
