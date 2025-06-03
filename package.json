@@ -1,6 +1,6 @@
 {
-  "name": "kcomplex-explorer",
-  "homepage": "https://ncg777.github.io/kcomplexexplorer",
+  "name": "k-Complex-explorer",
+  "homepage": "https://ncg777.github.io/KComplexExplorer",
   "version": "2025.6.3",
   "private": false,
   "dependencies": {

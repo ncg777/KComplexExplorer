@@ -1,1 +1,1 @@
-if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/kcomplexexplorer/sw.js', { scope: '/kcomplexexplorer/' })})}
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/KComplexExplorer/sw.js', { scope: '/KComplexExplorer/' })})}

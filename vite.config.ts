@@ -17,5 +17,5 @@ export default defineConfig({
   build: {
     outDir: 'docs', // or 'build' if you want to match CRA
   },
-  base: '/kcomplexexplorer/'
+  base: '/KComplexExplorer/'
 });
