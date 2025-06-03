@@ -1,8 +1,8 @@
 {
   "name": "kcomplex-explorer",
-  "homepage": "https://ncg777.github.io/KComplexExplorer",
-  "version": "2025.2.25",
-  "private": true,
+  "homepage": "https://ncg777.github.io/kcomplexexplorer",
+  "version": "2025.6.3",
+  "private": false,
   "dependencies": {
     "@testing-library/jest-dom": "^5.14.1",
     "@testing-library/react": "^13.0.0",
@@ -15,17 +15,15 @@
     "react": "^18.3.1",
     "react-bootstrap": "^2.10.4",
     "react-dom": "^18.3.1",
-    "react-scripts": "5.0.1",
     "tone": "^15.0.4",
     "typescript": "^4.4.2",
-    "ultra-mega-enumerator": "^2025.2.26",
+    "ultra-mega-enumerator": "^2025.3.12-2",
+    "vite-plugin-pwa": "^1.0.0",
     "web-vitals": "^2.1.0"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "start": "vite",
+    "build": "vite build"
   },
   "eslintConfig": {
     "extends": [
@@ -53,6 +51,8 @@
     "@babel/plugin-transform-react-jsx": "^7.25.2",
     "@popperjs/core": "^2.11.8",
     "@testing-library/dom": "^10.4.0",
-    "@types/react-bootstrap": "^0.32.37"
+    "@types/react-bootstrap": "^0.32.37",
+    "@vitejs/plugin-react": "^4.5.1",
+    "vite": "^6.3.5"
   }
 }
