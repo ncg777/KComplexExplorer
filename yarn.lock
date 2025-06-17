@@ -3845,10 +3845,10 @@ typescript@^4.4.2:
   resolved "https://registry.npmjs.org/typescript/-/typescript-4.9.5.tgz"
   integrity sha512-1FXk9E2Hm+QzZQ7z+McJiHL4NW1F2EzMu9Nq9i3zAaGqibafqYwCVU6WyWAuyQRRzOlxou8xZSyXLEN8oKj24g==
 
-ultra-mega-enumerator@^2025.3.12-2:
-  version "2025.3.12-2"
-  resolved "https://registry.yarnpkg.com/ultra-mega-enumerator/-/ultra-mega-enumerator-2025.3.12-2.tgz#53922811443ec16d002465a3ad9633f8e87c0157"
-  integrity sha512-YWVXKE1UHYxCC6rHuqvlIq7lj9JhRrIq+j6YBdrWYmUEu7R0y17T1jZtaN028wlcodbRdtmxx6V4hXEQyMZ0Rw==
+ultra-mega-enumerator@^2025.6.17:
+  version "2025.6.17"
+  resolved "https://registry.yarnpkg.com/ultra-mega-enumerator/-/ultra-mega-enumerator-2025.6.17.tgz#bcac762c52c0c0c7fa49eb04e6f0cc7ca442f97e"
+  integrity sha512-SxkypHYaXcueLKuFWqt5XXzaI9VNmZlA162YAzEjFWkSEtxreS2tJQzO+PVoyObZs+0tolN88gJpZNZSsb1icg==
   dependencies:
     "@types/node" "^22.5.1"
     yarn "^1.22.22"

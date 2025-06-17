@@ -242,7 +242,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                             <strong>Intervals: </strong>{chord.getIntervals().map(x => String(x)).join(" ")}<br />
                                                             <strong>Interval vector: </strong>{chord.getIntervalVector()?.join(' ') || '[]'}<br />
                                                             <strong>Symmetries: </strong>{chord.getSymmetries().map(x => String(x)).join(" ") || "None"}<br />
-                                                            <strong>Keys: </strong>{chord.getPotentialKeys().map(x => String(x)).join(" ") || "None"}
+                                                            <strong>Tension partition: </strong>{chord.getTensionPartition().map(x => String(x)).join(" ") || "None"}
                                                         </Popover.Body>
                                                     </Popover>
                                                 }
@@ -304,7 +304,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                             <strong>Intervals: </strong>{supersetChord.getIntervals().map(x => String(x)).join(" ")}<br />
                                                             <strong>Interval vector: </strong>{supersetChord.getIntervalVector()?.join(' ') || '[]'}<br />
                                                             <strong>Symmetries: </strong>{supersetChord.getSymmetries().map(x => String(x)).join(" ") || "None"}<br />
-                                                            <strong>Keys: </strong>{supersetChord.getPotentialKeys().map(x => String(x)).join(" ") || "None"}
+                                                            <strong>Tension partition: </strong>{supersetChord.getTensionPartition().map(x => String(x)).join(" ") || "None"}
                                                         </Popover.Body>
                                                     </Popover>
                                                 }
@@ -367,7 +367,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                             <strong>Intervals: </strong>{subsetChord.getIntervals().map(x => String(x)).join(" ")}<br />
                                                             <strong>Interval vector: </strong>{subsetChord.getIntervalVector()?.join(' ') || '[]'}<br />
                                                             <strong>Symmetries: </strong>{subsetChord.getSymmetries().map(x => String(x)).join(" ") || "None"}<br />
-                                                            <strong>Keys: </strong>{subsetChord.getPotentialKeys().map(x => String(x)).join(" ") || "None"}
+                                                            <strong>Tension partition: </strong>{subsetChord.getTensionPartition().map(x => String(x)).join(" ") || "None"}
                                                         </Popover.Body>
                                                     </Popover>
                                                 }
