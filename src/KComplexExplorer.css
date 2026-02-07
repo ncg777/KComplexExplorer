@@ -127,3 +127,123 @@ h4 {
     padding:1px;
     margin-left:5px;
 }
+
+/* Search input above lists */
+.list-search {
+    margin-bottom: 6px;
+    background-color: #2a2a2a;
+    color: white;
+    border: 1px solid #555;
+}
+.list-search::placeholder {
+    color: #999;
+}
+.list-search:focus {
+    background-color: #2a2a2a;
+    color: white;
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.15rem rgba(0, 123, 255, 0.25);
+}
+
+/* Set operations panel */
+.setop-panel {
+    background-color: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 0.25rem;
+    margin-bottom: 8px;
+    overflow: hidden;
+}
+.setop-header {
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    cursor: pointer;
+    gap: 8px;
+    user-select: none;
+}
+.setop-header:hover {
+    background-color: #333;
+}
+.setop-toggle {
+    color: white;
+    padding: 0;
+    text-decoration: none;
+}
+.setop-clear {
+    margin-left: auto;
+    padding: 0 6px;
+    font-size: 0.75rem;
+}
+.setop-body {
+    padding: 8px 10px;
+    border-top: 1px solid #444;
+}
+.setop-mode-toggle {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+.setop-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+.setop-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.85rem;
+    padding: 3px 8px;
+}
+.chip-remove {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0 0 4px;
+    opacity: 0.7;
+}
+.chip-remove:hover {
+    opacity: 1;
+}
+.setop-result {
+    background-color: #333;
+    padding: 8px;
+    border-radius: 0.25rem;
+    font-size: 0.9rem;
+}
+.setop-hint {
+    color: #999;
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
+/* Z-relation button */
+.zbutton {
+    font-weight: bold;
+    color: #ffc107;
+    border-color: #ffc107;
+}
+.zbutton:hover {
+    background-color: #ffc107;
+    color: #333;
+}
+
+/* Z-mates grid in modal */
+.z-mates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 10px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+.z-mate-card {
+    background-color: #444;
+    color: white;
+    padding: 10px;
+    border-radius: 0.25rem;
+    font-size: 0.9rem;
+}

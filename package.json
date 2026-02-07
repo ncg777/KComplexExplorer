@@ -1,7 +1,7 @@
 {
   "name": "k-Complex-explorer",
   "homepage": "https://ncg777.github.io/KComplexExplorer",
-  "version": "2025.6.17",
+  "version": "2026.2.6",
   "private": false,
   "dependencies": {
     "@testing-library/jest-dom": "^5.14.1",

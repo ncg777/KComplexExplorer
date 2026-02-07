@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ListGroup, OverlayTrigger, Form, Popover, Button, Modal } from 'react-bootstrap';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ListGroup, Form, Button, Modal, Badge } from 'react-bootstrap';
 import { PCS12 } from 'ultra-mega-enumerator';
 import { SubsetOf, SupersetOf } from 'ultra-mega-enumerator';
 import PCS12Identifier from './PCS12Identifier';
+import ChordListItem, { ChordDetails } from './ChordListItem';
 import './KComplexExplorer.css';
 import * as Tone from 'tone';
 import { useSynth } from './SynthContext'; // Import the useSynth hook
@@ -13,8 +14,8 @@ interface KComplexExplorerProps {
     
 const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const [pcs12List, setPcs12List] = useState<PCS12[]>([]);
-    const [supersets, setSupersets] = useState<string[]>([]);
-    const [subsets, setSubsets] = useState<string[]>([]);
+    const [supersets, setSupersets] = useState<PCS12[]>([]);
+    const [subsets, setSubsets] = useState<PCS12[]>([]);
     const [selectedPcs, setSelectedPcs] = useState<string | null>(null);
     const [selectedScale, setSelectedScale] = useState<string>(scale);
     const [showPcsPopover, setShowPcsPopover] = useState('');
@@ -23,15 +24,99 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const [activeSuperset, setActiveSuperset] = useState<string | null>(null);
     const [activeSubset, setActiveSubset] = useState<string | null>(null);
     const [showPcs12Modal, setShowPcs12Modal] = useState(false);
-    
-    // State for the help modal
     const [showHelpModal, setShowHelpModal] = useState(false);
+
+    // Search states
+    const [pcsSearch, setPcsSearch] = useState('');
+    const [supersetSearch, setSupersetSearch] = useState('');
+    const [subsetSearch, setSubsetSearch] = useState('');
+
+    // Set operations states (intersection & union)
+    const [setOpItems, setSetOpItems] = useState<string[]>([]);
+    const [showSetOps, setShowSetOps] = useState(false);
+    const [setOpMode, setSetOpMode] = useState<'intersection' | 'union'>('intersection');
+
+    // Z-relation modal
+    const [showZModal, setShowZModal] = useState(false);
+    const [zModalChord, setZModalChord] = useState<PCS12 | null>(null);
+    const [zMates, setZMates] = useState<PCS12[]>([]);
 
     // Create refs for your lists
     const pcsListRef = useRef<HTMLDivElement>(null);
     const supersetsRef = useRef<HTMLDivElement>(null);
     const subsetsRef = useRef<HTMLDivElement>(null);
     const synth = useSynth();
+
+    // Filtered lists for search
+    const matchesSearch = useCallback((chord: PCS12, query: string): boolean => {
+        if (!query.trim()) return true;
+        const q = query.toLowerCase().trim();
+        return chord.toString().toLowerCase().includes(q) ||
+            (chord.getCommonName() || '').toLowerCase().includes(q);
+    }, []);
+
+    const filteredPcs = useMemo(() =>
+        pcs12List.filter(c => matchesSearch(c, pcsSearch)),
+        [pcs12List, pcsSearch, matchesSearch]
+    );
+    const filteredSupersets = useMemo(() =>
+        supersets.filter(c => matchesSearch(c, supersetSearch)),
+        [supersets, supersetSearch, matchesSearch]
+    );
+    const filteredSubsets = useMemo(() =>
+        subsets.filter(c => matchesSearch(c, subsetSearch)),
+        [subsets, subsetSearch, matchesSearch]
+    );
+
+    // Set operation computation (intersection or union)
+    const setOpResult = useMemo(() => {
+        if (setOpItems.length < 2) return null;
+        const chords = setOpItems.map(f => PCS12.parseForte(f)).filter(Boolean) as PCS12[];
+        if (chords.length < 2) return null;
+        const sequences = chords.map(c => new Set(c.asSequence()));
+        let resultSet: Set<number>;
+        if (setOpMode === 'intersection') {
+            resultSet = new Set([...sequences[0]].filter(pc => sequences.every(s => s.has(pc))));
+        } else {
+            resultSet = new Set(sequences.flatMap(s => [...s]));
+        }
+        if (resultSet.size === 0) return PCS12.empty();
+        return PCS12.identify(PCS12.createWithSizeAndSet(12, resultSet));
+    }, [setOpItems, setOpMode]);
+
+    const addToSetOp = useCallback((forte: string) => {
+        setSetOpItems(prev => {
+            if (prev.includes(forte)) return prev;
+            const next = [...prev, forte];
+            if (next.length >= 2) setShowSetOps(true);
+            return next;
+        });
+    }, []);
+
+    const removeFromSetOp = useCallback((forte: string) => {
+        setSetOpItems(prev => prev.filter(f => f !== forte));
+    }, []);
+
+    const clearSetOp = useCallback(() => {
+        setSetOpItems([]);
+        setShowSetOps(false);
+    }, []);
+
+    // Z-relation: find all chords with the same interval vector
+    const showZRelations = useCallback((chord: PCS12) => {
+        const iv = chord.getIntervalVector();
+        if (!iv) return;
+        const ivStr = iv.join(',');
+        const allChords = Array.from(PCS12.getChords());
+        const mates = allChords.filter(c => {
+            const civ = c.getIntervalVector();
+            return civ && civ.join(',') === ivStr && c.toString() !== chord.toString();
+        }).sort((a, b) => PCS12.ForteStringComparator(a.toString(), b.toString()));
+        setZModalChord(chord);
+        setZMates(mates);
+        setShowZModal(true);
+    }, []);
+
     const refreshPcs = useCallback(() => {
         if (!PCS12 || !PCS12.isInitialized()) return;
 
@@ -59,21 +144,21 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         const selectedChord = PCS12.parseForte(chord);
 
         if (selectedChord) {
-            setShowSupersetPopover(''); // Reset Superset popover
+            setShowSupersetPopover('');
             setShowSubsetPopover('');
+            setSupersetSearch('');
+            setSubsetSearch('');
             const supersetChecker = new SupersetOf(selectedChord);
             const subsetChecker = new SubsetOf(selectedChord);
 
             const foundSupersets = Array.from(pcs12List)
-            .filter(chord => supersetChecker.apply(chord))
-            .map(chord => chord.toString()).sort(PCS12.ForteStringComparator);
-        
+                .filter(chord => supersetChecker.apply(chord))
+                .sort((a, b) => PCS12.ForteStringComparator(a.toString(), b.toString()));
             setSupersets(foundSupersets);
-            
+
             const foundSubsets = Array.from(pcs12List)
                 .filter(chord => subsetChecker.apply(chord))
-                .map(chord => chord.toString()).sort(PCS12.ReverseForteStringComparator);
-            
+                .sort((a, b) => PCS12.ReverseForteStringComparator(a.toString(), b.toString()));
             setSubsets(foundSubsets);
         }
     };
@@ -89,8 +174,11 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
             setSubsets([]);
 
             setShowPcsPopover('');
-            setShowSupersetPopover(''); // Reset Superset popover
+            setShowSupersetPopover('');
             setShowSubsetPopover('');
+            setPcsSearch('');
+            setSupersetSearch('');
+            setSubsetSearch('');
         }
     };
 
@@ -203,128 +291,126 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                     Help
                 </Button>
             </div>
+            {/* Set Operations Panel */}
+            {(setOpItems.length > 0 || showSetOps) && (
+                <div className="setop-panel">
+                    <div className="setop-header" onClick={() => setShowSetOps(!showSetOps)}>
+                        <strong>⊕ Set Operations ({setOpItems.length})</strong>
+                        <Button variant="link" size="sm" className="setop-toggle">
+                            {showSetOps ? '▾' : '▸'}
+                        </Button>
+                        {setOpItems.length > 0 && (
+                            <Button variant="outline-danger" size="sm" className="setop-clear" onClick={(e) => { e.stopPropagation(); clearSetOp(); }}>
+                                Clear
+                            </Button>
+                        )}
+                    </div>
+                    {showSetOps && (
+                        <div className="setop-body">
+                            <div className="setop-mode-toggle">
+                                <Button
+                                    size="sm"
+                                    variant={setOpMode === 'intersection' ? 'info' : 'outline-info'}
+                                    onClick={(e) => { e.stopPropagation(); setSetOpMode('intersection'); }}
+                                >∩ Intersection</Button>
+                                <Button
+                                    size="sm"
+                                    variant={setOpMode === 'union' ? 'info' : 'outline-info'}
+                                    onClick={(e) => { e.stopPropagation(); setSetOpMode('union'); }}
+                                >∪ Union</Button>
+                            </div>
+                            <div className="setop-chips">
+                                {setOpItems.map(forte => (
+                                    <Badge key={`setop-${forte}`} bg="info" className="setop-chip">
+                                        {forte}
+                                        <button className="chip-remove" onClick={() => removeFromSetOp(forte)}>×</button>
+                                    </Badge>
+                                ))}
+                            </div>
+                            {setOpResult && setOpItems.length >= 2 && (
+                                <div className="setop-result">
+                                    <strong>{setOpMode === 'intersection' ? '∩' : '∪'} Result: </strong>{setOpResult.toString()}<br />
+                                    <ChordDetails chord={setOpResult} />
+                                </div>
+                            )}
+                            {setOpItems.length < 2 && (
+                                <div className="setop-hint">
+                                    Add at least 2 pitch class sets using the ⊕ button in popovers.
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
             <table className="kcomplex-table">
                 <tbody>
                     <tr>
                         <td rowSpan={2} className="align-top">
                             <h4>Pitch class sets</h4>
+                            <Form.Control
+                                type="text"
+                                placeholder="Search by Forte # or name..."
+                                value={pcsSearch}
+                                onChange={(e) => setPcsSearch(e.target.value)}
+                                className="list-search"
+                                size="sm"
+                            />
                             <div className="scrollable-list" ref={pcsListRef} style={{ maxHeight: '70vh', overflowY: 'auto' }}>
                             <ListGroup>
-                                {pcs12List.map(chord => {
-                                    return (
-                                        chord && (
-                                            <OverlayTrigger
-                                                key={`pcs12-${chord.toString()}`}
-                                                placement="top"
-                                                overlay={
-                                                    <Popover id={`pcspop-${chord.toString()}`}>
-                                                        <Popover.Header>
-                                                                <strong>{chord.toString()}
-                                                                <Button 
-                                                                    className="copybutton"
-                                                                    onClick={(e) => { 
-                                                                        e.stopPropagation(); 
-                                                                        copyToClipboard(chord.toString()); 
-                                                                    }}
-                                                                >📋</Button>
-                                                                </strong>
-                                                                <button type="button" className="close-button" onClick={(e) => {e.stopPropagation(); setShowPcsPopover('')}}>
-                                                                    &times;
-                                                                </button>
-                                                        </Popover.Header>
-                                                        <Popover.Body>
-                                                            <strong>Play: </strong>
-                                                                <Button className="playbutton" onClick={(e) => {e.stopPropagation(); playChordSeq(chord)}}>Up</Button>
-                                                                <Button className="playbutton" onClick={(e) => {e.stopPropagation(); playChordSeq(chord, true)}}>Down</Button>
-                                                                <Button className="playbutton" onClick={(e) => {e.stopPropagation(); playChordSimul(chord);}}>Simul</Button><br />
-                                                            <strong>Common name(s): </strong>{chord.getCommonName() || 'None'}<br />
-                                                            <strong>Pitch classes: </strong>{chord.combinationString()}<br />
-                                                            <strong>Intervals: </strong>{chord.getIntervals().map(x => String(x)).join(" ")}<br />
-                                                            <strong>Interval vector: </strong>{chord.getIntervalVector()?.join(' ') || '[]'}<br />
-                                                            <strong>Symmetries: </strong>{chord.getSymmetries().map(x => String(x)).join(" ") || "None"}<br />
-                                                            <strong>Tension partition: </strong>{chord.getTensionPartition().map(x => String(x)).join(" ") || "None"}
-                                                        </Popover.Body>
-                                                    </Popover>
-                                                }
-                                                show={showPcsPopover === chord.toString()}
-                                                trigger="click"
-                                                rootClose
-                                            >
-                                                <ListGroup.Item
-                                                    onClick={() => {
-                                                        handleSelect(chord.toString());
-                                                        setShowPcsPopover(chord.toString());
-                                                    }}
-                                                    className={selectedPcs === chord.toString() ? 'active' : ''}
-                                                >
-                                                    {chord.toString()}
-                                                </ListGroup.Item>
-                                            </OverlayTrigger>
-                                        )
-                                    );
-                                })}
+                                {filteredPcs.map(chord => (
+                                    <ChordListItem
+                                        key={`pcs12-${chord.toString()}`}
+                                        chord={chord}
+                                        keyPrefix="pcs"
+                                        isPopoverVisible={showPcsPopover === chord.toString()}
+                                        isActive={selectedPcs === chord.toString()}
+                                        onClick={() => {
+                                            handleSelect(chord.toString());
+                                            setShowPcsPopover(chord.toString());
+                                        }}
+                                        onClosePopover={() => setShowPcsPopover('')}
+                                        playChordSeq={playChordSeq}
+                                        playChordSimul={playChordSimul}
+                                        copyToClipboard={copyToClipboard}
+                                        onAddToSetOp={addToSetOp}
+                                        onShowZRelations={showZRelations}
+                                    />
+                                ))}
                             </ListGroup>
 
                         </div>
                         </td>
                         <td rowSpan={1} className="align-top">
                         <h4>Supersets</h4>
+                        <Form.Control
+                            type="text"
+                            placeholder="Search..."
+                            value={supersetSearch}
+                            onChange={(e) => setSupersetSearch(e.target.value)}
+                            className="list-search"
+                            size="sm"
+                        />
                         <div className="scrollable-list" ref={supersetsRef} style={{ height: '33vh', width: '100%', overflowY: 'auto' }}>
                             <ListGroup>
-                                {supersets.map(superset => {
-                                    const supersetChord = PCS12.parseForte(superset);
-                                    return (
-                                        supersetChord && (
-                                            <OverlayTrigger
-                                                key={`superset-${superset}`}
-                                                placement="top"
-                                                overlay={
-                                                    <Popover id={`pcspop-${supersetChord.toString()}`}>
-                                                        <Popover.Header>
-                                                                <strong>{supersetChord.toString()}
-                                                                <Button 
-                                                                className="copybutton"
-                                                                onClick={(e) => { 
-                                                                    e.stopPropagation(); 
-                                                                    copyToClipboard(supersetChord.toString()); 
-                                                                }}
-                                                                >📋</Button>
-                                                                </strong>
-                                                                <button type="button" className="close-button" onClick={(e) => {e.stopPropagation(); setShowSupersetPopover('')}}>
-                                                                    &times;
-                                                                </button>
-                                                        </Popover.Header>
-                                                        <Popover.Body>
-                                                            <strong>Play: </strong>
-                                                                <Button className="playbutton" onClick={(e) => {e.stopPropagation(); playChordSeq(supersetChord)}}>Up</Button>
-                                                                <Button className="playbutton" onClick={(e) => {e.stopPropagation(); playChordSeq(supersetChord, true)}}>Down</Button>
-                                                                <Button className="playbutton" onClick={(e) => {e.stopPropagation(); playChordSimul(supersetChord);}}>Simul</Button><br />
-                                                            <strong>Common name(s): </strong>{supersetChord.getCommonName() || 'None'}<br />
-                                                            <strong>Pitch classes: </strong>{supersetChord.combinationString()}<br />
-                                                            <strong>Intervals: </strong>{supersetChord.getIntervals().map(x => String(x)).join(" ")}<br />
-                                                            <strong>Interval vector: </strong>{supersetChord.getIntervalVector()?.join(' ') || '[]'}<br />
-                                                            <strong>Symmetries: </strong>{supersetChord.getSymmetries().map(x => String(x)).join(" ") || "None"}<br />
-                                                            <strong>Tension partition: </strong>{supersetChord.getTensionPartition().map(x => String(x)).join(" ") || "None"}
-                                                        </Popover.Body>
-                                                    </Popover>
-                                                }
-                                                show={showSupersetPopover === superset}
-                                                trigger="click"
-                                                rootClose
-                                            >
-                                                <ListGroup.Item
-                                                    onClick={() => {
-                                                        setActiveSuperset(superset);
-                                                        setShowSupersetPopover(superset);
-                                                    }}
-                                                    className={activeSuperset === superset ? 'active' : ''}
-                                                >
-                                                    {supersetChord.toString()}
-                                                </ListGroup.Item>
-                                            </OverlayTrigger>
-                                        )
-                                    );
-                                })}
+                                {filteredSupersets.map(chord => (
+                                    <ChordListItem
+                                        key={`superset-${chord.toString()}`}
+                                        chord={chord}
+                                        keyPrefix="superset"
+                                        isPopoverVisible={showSupersetPopover === chord.toString()}
+                                        isActive={activeSuperset === chord.toString()}
+                                        onClick={() => {
+                                            setActiveSuperset(chord.toString());
+                                            setShowSupersetPopover(chord.toString());
+                                        }}
+                                        onClosePopover={() => setShowSupersetPopover('')}
+                                        playChordSeq={playChordSeq}
+                                        playChordSimul={playChordSimul}
+                                        copyToClipboard={copyToClipboard}
+                                        onAddToSetOp={addToSetOp}
+                                        onShowZRelations={showZRelations}
+                                    />
+                                ))}
                             </ListGroup>
                         </div>
                         </td>
@@ -332,62 +418,35 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                     <tr>
                         <td rowSpan={1} className="align-top">
                         <h4>Subsets</h4>
+                        <Form.Control
+                            type="text"
+                            placeholder="Search..."
+                            value={subsetSearch}
+                            onChange={(e) => setSubsetSearch(e.target.value)}
+                            className="list-search"
+                            size="sm"
+                        />
                         <div className="scrollable-list" ref={subsetsRef} style={{ height: '33vh', width: '100%', overflowY: 'auto' }}>
                             <ListGroup>
-                                {subsets.map(subset => {
-                                    const subsetChord = PCS12.parseForte(subset);
-                                    return (
-                                        subsetChord && (
-                                            <OverlayTrigger
-                                                key={`subset-${subset}`}
-                                                placement="top"
-                                                overlay={
-                                                    <Popover id={`pcspop-${subsetChord.toString()}`}>
-                                                        <Popover.Header>
-                                                            <strong>{subsetChord.toString()}
-                                                            <Button 
-                                                                className="copybutton"
-                                                                onClick={(e) => { 
-                                                                    e.stopPropagation(); 
-                                                                    copyToClipboard(subsetChord.toString()); 
-                                                                }}
-                                                            >📋</Button>
-                                                            </strong>
-                                                            <button type="button" className="close-button" onClick={(e) =>{e.stopPropagation(); setShowSubsetPopover('')}}>
-                                                                &times;
-                                                            </button>
-                                                        </Popover.Header>
-                                                        <Popover.Body>
-                                                            <strong>Play: </strong>
-                                                                <Button className="playbutton" onClick={(e) => {e.stopPropagation(); playChordSeq(subsetChord)}}>Up</Button>
-                                                                <Button className="playbutton" onClick={(e) => {e.stopPropagation(); playChordSeq(subsetChord, true)}}>Down</Button>
-                                                                <Button className="playbutton" onClick={(e) => {e.stopPropagation(); playChordSimul(subsetChord);}}>Simul</Button><br />
-                                                            <strong>Common name(s): </strong>{subsetChord.getCommonName() || 'None'}<br />
-                                                            <strong>Pitch classes: </strong>{subsetChord.combinationString()}<br />
-                                                            <strong>Intervals: </strong>{subsetChord.getIntervals().map(x => String(x)).join(" ")}<br />
-                                                            <strong>Interval vector: </strong>{subsetChord.getIntervalVector()?.join(' ') || '[]'}<br />
-                                                            <strong>Symmetries: </strong>{subsetChord.getSymmetries().map(x => String(x)).join(" ") || "None"}<br />
-                                                            <strong>Tension partition: </strong>{subsetChord.getTensionPartition().map(x => String(x)).join(" ") || "None"}
-                                                        </Popover.Body>
-                                                    </Popover>
-                                                }
-                                                show={showSubsetPopover === subset}
-                                                trigger="click"
-                                                rootClose
-                                            >
-                                                <ListGroup.Item
-                                                    onClick={() => {
-                                                        setActiveSubset(subset);
-                                                        setShowSubsetPopover(subset);
-                                                    }}
-                                                    className={activeSubset === subset ? 'active' : ''}
-                                                >
-                                                    {subsetChord.toString()}
-                                                </ListGroup.Item>
-                                            </OverlayTrigger>
-                                        )
-                                    );
-                                })}
+                                {filteredSubsets.map(chord => (
+                                    <ChordListItem
+                                        key={`subset-${chord.toString()}`}
+                                        chord={chord}
+                                        keyPrefix="subset"
+                                        isPopoverVisible={showSubsetPopover === chord.toString()}
+                                        isActive={activeSubset === chord.toString()}
+                                        onClick={() => {
+                                            setActiveSubset(chord.toString());
+                                            setShowSubsetPopover(chord.toString());
+                                        }}
+                                        onClosePopover={() => setShowSubsetPopover('')}
+                                        playChordSeq={playChordSeq}
+                                        playChordSimul={playChordSimul}
+                                        copyToClipboard={copyToClipboard}
+                                        onAddToSetOp={addToSetOp}
+                                        onShowZRelations={showZRelations}
+                                    />
+                                ))}
                             </ListGroup>
                         </div>
                         </td>
@@ -418,11 +477,57 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                         The supersets and subsets of the selected pitch class set are displayed alongside. You can click
                         on each to see their respective details.
                     </p>
+                    <h6>Searching:</h6>
+                    <p>
+                        Use the search boxes above each list to filter by Forte number or common name.
+                    </p>
+                    <h6>Set Operations (Intersection &amp; Union):</h6>
+                    <p>
+                        Click the ⊕ button in any popover to add that set to the operations panel. Toggle between
+                        ∩ Intersection (common pitch classes) and ∪ Union (all pitch classes combined). Use the × on
+                        each chip to remove individual sets, or "Clear" to reset.
+                    </p>
+                    <h6>Z-Relation:</h6>
+                    <p>
+                        Chords whose Forte number contains a "z" share their interval vector with other distinct set classes.
+                        When viewing a z-chord, a <strong>Z</strong> button appears in the popover. Click it to see all
+                        chords that share the same interval vector.
+                    </p>
                 </Modal.Body>
                 <Modal.Footer>
                     <Button variant="secondary" onClick={() => setShowHelpModal(false)}>
                         Close
                     </Button>
+                </Modal.Footer>
+            </Modal>
+            {/* Z-Relation Modal */}
+            <Modal show={showZModal} onHide={() => setShowZModal(false)} size="lg">
+                <Modal.Header closeButton>
+                    <Modal.Title>
+                        Z-Related chords for {zModalChord?.toString()}
+                    </Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    {zModalChord && (
+                        <div style={{ marginBottom: '12px' }}>
+                            <strong>Interval vector: </strong>{zModalChord.getIntervalVector()?.join(' ') || '[]'}
+                        </div>
+                    )}
+                    {zMates.length === 0 ? (
+                        <p>No Z-related chords found.</p>
+                    ) : (
+                        <div className="z-mates-grid">
+                            {zMates.map(mate => (
+                                <div key={`zmate-${mate.toString()}`} className="z-mate-card">
+                                    <strong>{mate.toString()}</strong><br />
+                                    <ChordDetails chord={mate} />
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowZModal(false)}>Close</Button>
                 </Modal.Footer>
             </Modal>
             <PCS12Identifier show={showPcs12Modal} onHide={() => setShowPcs12Modal(false)} />
