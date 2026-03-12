@@ -1,0 +1,23 @@
+{
+  "name": "k-complex-explorer-cli",
+  "version": "2026.2.6",
+  "description": "CLI and MCP server for KComplexExplorer - Pitch-Class Set analysis tools",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "kcomplex": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start:mcp": "node dist/mcp-server.js",
+    "start:cli": "node dist/cli.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "ultra-mega-enumerator": "^2026.3.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  }
+}
