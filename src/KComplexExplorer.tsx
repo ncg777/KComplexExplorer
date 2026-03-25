@@ -13,6 +13,7 @@ interface KComplexExplorerProps {
 }
     
 const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
+    const pendingMainSelectionRef = useRef<string | null>(null);
     const [pcs12List, setPcs12List] = useState<PCS12[]>([]);
     const [supersets, setSupersets] = useState<PCS12[]>([]);
     const [subsets, setSubsets] = useState<PCS12[]>([]);
@@ -182,6 +183,18 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         }
     };
 
+    const selectChordInMainList = useCallback((chord: PCS12) => {
+        const forte = chord.toString();
+        pendingMainSelectionRef.current = forte;
+        setPcsSearch('');
+        setActiveSubset(null);
+        setActiveSuperset(null);
+        setShowSupersetPopover('');
+        setShowSubsetPopover('');
+        handleSelect(forte);
+        setShowPcsPopover(forte);
+    }, [handleSelect]);
+
     // Scroll event handler
     const handleScroll = () => {
         setShowPcsPopover(''); // Reset PCS popover
@@ -228,6 +241,22 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
             document.removeEventListener('click', handleClickOutside);
         };
     }, []);
+
+    useEffect(() => {
+        const forte = pendingMainSelectionRef.current;
+        if (!forte || selectedPcs !== forte) return;
+
+        const itemId = `pcs-item-${encodeURIComponent(forte)}`;
+        const scrollToSelected = () => {
+            const element = document.getElementById(itemId);
+            if (!element) return;
+
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            pendingMainSelectionRef.current = null;
+        };
+
+        window.requestAnimationFrame(scrollToSelected);
+    }, [filteredPcs, selectedPcs]);
     
 
     const playChordSeq = useCallback((chord: PCS12, down:boolean = false) => {
@@ -362,6 +391,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                         key={`pcs12-${chord.toString()}`}
                                         chord={chord}
                                         keyPrefix="pcs"
+                                        itemId={`pcs-item-${encodeURIComponent(chord.toString())}`}
                                         isPopoverVisible={showPcsPopover === chord.toString()}
                                         isActive={selectedPcs === chord.toString()}
                                         onClick={() => {
@@ -409,6 +439,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                         copyToClipboard={copyToClipboard}
                                         onAddToSetOp={addToSetOp}
                                         onShowZRelations={showZRelations}
+                                        onSelectInMainList={selectChordInMainList}
                                     />
                                 ))}
                             </ListGroup>
@@ -445,6 +476,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                         copyToClipboard={copyToClipboard}
                                         onAddToSetOp={addToSetOp}
                                         onShowZRelations={showZRelations}
+                                        onSelectInMainList={selectChordInMainList}
                                     />
                                 ))}
                             </ListGroup>

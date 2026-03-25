@@ -7,6 +7,7 @@ interface ChordListItemProps {
     keyPrefix: string;
     isPopoverVisible: boolean;
     isActive: boolean;
+    itemId?: string;
     onClick: () => void;
     onClosePopover: () => void;
     playChordSeq: (chord: PCS12, down?: boolean) => void;
@@ -14,6 +15,7 @@ interface ChordListItemProps {
     copyToClipboard: (text: string) => void;
     onAddToSetOp?: (forte: string) => void;
     onShowZRelations?: (chord: PCS12) => void;
+    onSelectInMainList?: (chord: PCS12) => void;
 }
 
 export const ChordDetails: React.FC<{ chord: PCS12 }> = ({ chord }) => (
@@ -32,6 +34,7 @@ const ChordListItem: React.FC<ChordListItemProps> = ({
     keyPrefix,
     isPopoverVisible,
     isActive,
+    itemId,
     onClick,
     onClosePopover,
     playChordSeq,
@@ -39,6 +42,7 @@ const ChordListItem: React.FC<ChordListItemProps> = ({
     copyToClipboard,
     onAddToSetOp,
     onShowZRelations,
+    onSelectInMainList,
 }) => {
     const forteStr = chord.toString();
     const isZChord = forteStr.toLowerCase().includes('z');
@@ -55,6 +59,13 @@ const ChordListItem: React.FC<ChordListItemProps> = ({
                             className="copybutton"
                             onClick={(e) => { e.stopPropagation(); copyToClipboard(forteStr); }}
                         >📋</Button>
+                        {onSelectInMainList && (
+                            <Button
+                                className="copybutton"
+                                onClick={(e) => { e.stopPropagation(); onSelectInMainList(chord); }}
+                                title="Select this set in the main list"
+                            >←</Button>
+                        )}
                     </strong>
                     <button type="button" className="close-button" onClick={(e) => { e.stopPropagation(); onClosePopover(); }}>
                         &times;
@@ -89,6 +100,7 @@ const ChordListItem: React.FC<ChordListItemProps> = ({
         rootClose
     >
         <ListGroup.Item
+            id={itemId}
             onClick={onClick}
             className={isActive ? 'active' : ''}
         >
