@@ -488,7 +488,9 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
             {/* Help Modal */}
             <Modal show={showHelpModal} onHide={() => setShowHelpModal(false)} backdrop="static" keyboard={false}>
                 <Modal.Header closeButton>
-                    <Modal.Title>Help</Modal.Title>
+                    <Modal.Title>
+                        Help <span className="help-version">v{__APP_VERSION__}</span>
+                    </Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
                     <h5>Using the k-Complex explorer</h5>

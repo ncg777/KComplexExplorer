@@ -112,6 +112,15 @@ h4 {
 .header {
     position: relative;
 }
+
+.help-version {
+    color: #ff4fd8;
+    font-size: 0.7em;
+    font-weight: 600;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+}
+
 .playbutton {
     padding-top:0px;
     padding-bottom:0px;
