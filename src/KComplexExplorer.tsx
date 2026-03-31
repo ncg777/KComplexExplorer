@@ -284,6 +284,45 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         await navigator.clipboard.writeText(text);
     },[]);
 
+    // Polychord UI state and computation
+    const [polychordText, setPolychordText] = useState('');
+    const [polychordResult, setPolychordResult] = useState('');
+
+    const computePolychord = useCallback(() => {
+        const parsedScale = PCS12.parseForte(selectedScale);
+        if (!parsedScale) {
+            setPolychordResult('');
+            return;
+        }
+        const scaleSeq = parsedScale.asSequence();
+        const k = parsedScale.getK();
+
+        const entries = polychordText.split(',').map(s => s.trim()).filter(Boolean);
+        const out: string[] = [];
+
+        for (const entry of entries) {
+            const tokens = entry.split(/\s+/).map(t => t.trim()).filter(Boolean);
+            const chords: PCS12[] = tokens.map(t => PCS12.parseForte(t)).filter(Boolean) as PCS12[];
+
+            let o = BigInt(0);
+            for (let i = 0; i < chords.length; i++) {
+                const seq = chords[i].asSequence();
+                let seg = BigInt(0);
+                for (const pc of seq) {
+                    const idx = scaleSeq.indexOf(pc);
+                    if (idx === -1) continue;
+                    seg |= (BigInt(1) << BigInt(idx));
+                }
+                const shift = BigInt(i * k);
+                o |= (seg << shift);
+            }
+
+            out.push(o.toString());
+        }
+
+        setPolychordResult(out.join(' '));
+    }, [polychordText, selectedScale]);
+
     return (
         <div className="KComplexExplorer">
             <div className="header">
@@ -371,6 +410,33 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                     )}
                 </div>
             )}
+            {/* Polychord bitmask panel */}
+            <div className="setop-panel" style={{ marginTop: '8px' }}>
+                <div className="setop-header">
+                    <strong>Polychord bitmask</strong>
+                </div>
+                <div className="setop-body">
+                    <Form.Control
+                        as="textarea"
+                        rows={2}
+                        placeholder={'Enter polychords, comma-separated. Each entry: space-separated Forte numbers (e.g. "3-11A 3-11B, 4-19").'}
+                        value={polychordText}
+                        onChange={e => setPolychordText(e.target.value)}
+                        className="list-search"
+                        size="sm"
+                    />
+                    <div style={{ marginTop: '8px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <Button size="sm" onClick={() => computePolychord()}>Compute</Button>
+                        <Button size="sm" variant="secondary" onClick={() => { setPolychordText(''); setPolychordResult(''); }}>Clear</Button>
+                        <Button size="sm" variant="outline-info" onClick={() => copyToClipboard(polychordResult)} disabled={!polychordResult}>Copy</Button>
+                        <div style={{ marginLeft: 'auto', overflowX: 'auto' }}>
+                            <strong>Result:</strong>
+                            <span style={{ marginLeft: '8px', whiteSpace: 'pre' }}>{polychordResult}</span>
+                        </div>
+                    </div>
+                    <div style={{ marginTop: '6px', fontSize: '0.9rem', color: '#999' }}>Example: "3-11A 3-11B, 4-19"</div>
+                </div>
+            </div>
             <table className="kcomplex-table">
                 <tbody>
                     <tr>

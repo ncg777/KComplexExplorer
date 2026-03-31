@@ -9,6 +9,7 @@ import {
   union,
   intersection,
   zRelations,
+  computePolychordMasks,
   transpose,
   formatAnalysis,
 } from './pcs12-operations.js';
@@ -229,6 +230,27 @@ async function main(): Promise<void> {
       }
       const result = transpose(positional[0], semitones);
       output(result, asJson);
+      break;
+    }
+
+    case 'polychord': {
+      if (positional.length < 2) {
+        console.error('Error: polychord requires a scale Forte and a comma-separated chords string (quote it).');
+        process.exit(1);
+      }
+      const scale = positional[0];
+      const chordsText = positional.slice(1).join(' ');
+      try {
+        const results = computePolychordMasks(scale, chordsText);
+        if (asJson) {
+          console.log(JSON.stringify(results, null, 2));
+        } else {
+          console.log(results.join(' '));
+        }
+      } catch (err: any) {
+        console.error(`Error: ${err.message}`);
+        process.exit(1);
+      }
       break;
     }
 

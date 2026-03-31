@@ -280,3 +280,49 @@ export function transpose(forte: string, semitones: number): PCS12Analysis {
   const transposed = pcs.transpose(semitones);
   return analyzePCS12(PCS12.identify(transposed));
 }
+
+/**
+ * Compute polychord bitmasks for comma-separated polychord entries.
+ * Each entry is a space-separated list of Forte numbers representing chords.
+ * The algorithm maps each chord's pitch classes to bit positions within the
+ * supplied scale and packs successive chords into higher bit ranges.
+ *
+ * Returns an array of decimal strings (BigInt) for each comma-separated entry.
+ */
+export function computePolychordMasks(scaleForte: string, chordsText: string): string[] {
+  const scale = parseForteNormalized(scaleForte);
+  if (!scale) throw new Error(`Invalid scale Forte number: "${scaleForte}"`);
+
+  const scaleSeq = scale.asSequence();
+  const k = scale.getK();
+
+  const entries = chordsText
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  const results: string[] = [];
+
+  for (const entry of entries) {
+    const tokens = entry.split(/\s+/).map(t => t.trim()).filter(Boolean);
+    const chords: PCS12[] = tokens.map(t => parseForteNormalized(t)).filter(Boolean) as PCS12[];
+
+    let o = 0n;
+    for (let i = 0; i < chords.length; i++) {
+      const chord = chords[i];
+      const seq = chord.asSequence();
+      let segment = 0n;
+      for (const pc of seq) {
+        const idx = scaleSeq.indexOf(pc);
+        if (idx === -1) continue; // pitch class not in scale, ignore
+        segment |= (1n << BigInt(idx));
+      }
+      const shift = BigInt(i * k);
+      o |= (segment << shift);
+    }
+
+    results.push(o.toString());
+  }
+
+  return results;
+}

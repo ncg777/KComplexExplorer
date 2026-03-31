@@ -12,6 +12,7 @@ import {
   union,
   intersection,
   zRelations,
+  computePolychordMasks,
   transpose,
   formatAnalysis,
   type PCS12Analysis,
@@ -222,6 +223,26 @@ async function main(): Promise<void> {
         const result = transpose(forte, semitones);
         return {
           content: [{ type: 'text' as const, text: formatResult(result) }],
+        };
+      } catch (err: any) {
+        return { content: [{ type: 'text' as const, text: `Error: ${err.message}` }], isError: true };
+      }
+    },
+  );
+
+  // Tool: polychord
+  server.tool(
+    'polychord',
+    'Compute polychord bitmasks within a given scale. Provide scale Forte and comma-separated chord entries (each entry is space-separated Forte tokens).',
+    {
+      forte: z.string().describe('Forte number of the upper bound scale (e.g., "7-35")'),
+      chordsText: z.string().describe('Comma-separated entries; each entry is a space-separated list of Forte numbers (e.g., "3-11A 3-11B, 4-19").'),
+    },
+    async ({ forte, chordsText }) => {
+      try {
+        const results = computePolychordMasks(forte, chordsText);
+        return {
+          content: [{ type: 'text' as const, text: results.join(' ') }],
         };
       } catch (err: any) {
         return { content: [{ type: 'text' as const, text: `Error: ${err.message}` }], isError: true };
