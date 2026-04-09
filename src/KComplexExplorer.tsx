@@ -285,6 +285,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     },[]);
 
     // Polychord UI state and computation
+    const [showPolychord, setShowPolychord] = useState(false);
     const [polychordText, setPolychordText] = useState('');
     const [polychordResult, setPolychordResult] = useState('');
 
@@ -324,6 +325,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     }, [polychordText, selectedScale]);
 
     // Chord Sorter UI state and computation
+    const [showChordSorter, setShowChordSorter] = useState(false);
     const [chordSorterText, setChordSorterText] = useState('');
     const [chordSorterRotate, setChordSorterRotate] = useState(0);
     const [chordSorterResult, setChordSorterResult] = useState('');
@@ -438,69 +440,79 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
             )}
             {/* Polychord bitmask panel */}
             <div className="setop-panel" style={{ marginTop: '8px' }}>
-                <div className="setop-header">
+                <div className="setop-header" onClick={() => setShowPolychord(!showPolychord)}>
                     <strong>Polychord bitmask</strong>
+                    <Button variant="link" size="sm" className="setop-toggle">
+                        {showPolychord ? '▾' : '▸'}
+                    </Button>
                 </div>
-                <div className="setop-body">
-                    <Form.Control
-                        as="textarea"
-                        rows={2}
-                        placeholder={'Enter polychords, comma-separated. Each entry: space-separated Forte numbers (e.g. "3-11A 3-11B, 4-19").'}
-                        value={polychordText}
-                        onChange={e => setPolychordText(e.target.value)}
-                        className="list-search"
-                        size="sm"
-                    />
-                    <div style={{ marginTop: '8px', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <Button size="sm" onClick={() => computePolychord()}>Compute</Button>
-                        <Button size="sm" variant="secondary" onClick={() => { setPolychordText(''); setPolychordResult(''); }}>Clear</Button>
-                        <Button size="sm" variant="outline-info" onClick={() => copyToClipboard(polychordResult)} disabled={!polychordResult}>Copy</Button>
-                        <div style={{ marginLeft: 'auto', overflowX: 'auto' }}>
-                            <strong>Result:</strong>
-                            <span style={{ marginLeft: '8px', whiteSpace: 'pre' }}>{polychordResult}</span>
+                {showPolychord && (
+                    <div className="setop-body">
+                        <Form.Control
+                            as="textarea"
+                            rows={2}
+                            placeholder={'Enter polychords, comma-separated. Each entry: space-separated Forte numbers (e.g. "3-11A 3-11B, 4-19").'}
+                            value={polychordText}
+                            onChange={e => setPolychordText(e.target.value)}
+                            className="list-search"
+                            size="sm"
+                        />
+                        <div style={{ marginTop: '8px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <Button size="sm" onClick={(e) => { e.stopPropagation(); computePolychord(); }}>Compute</Button>
+                            <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); setPolychordText(''); setPolychordResult(''); }}>Clear</Button>
+                            <Button size="sm" variant="outline-info" onClick={(e) => { e.stopPropagation(); copyToClipboard(polychordResult); }} disabled={!polychordResult}>Copy</Button>
+                            <div style={{ marginLeft: 'auto', overflowX: 'auto' }}>
+                                <strong>Result:</strong>
+                                <span style={{ marginLeft: '8px', whiteSpace: 'pre' }}>{polychordResult}</span>
+                            </div>
                         </div>
+                        <div style={{ marginTop: '6px', fontSize: '0.9rem', color: '#999' }}>Example: "3-11A 3-11B, 4-19"</div>
                     </div>
-                    <div style={{ marginTop: '6px', fontSize: '0.9rem', color: '#999' }}>Example: "3-11A 3-11B, 4-19"</div>
-                </div>
+                )}
             </div>
             {/* Chord Sorter panel */}
             <div className="setop-panel" style={{ marginTop: '8px' }}>
-                <div className="setop-header">
+                <div className="setop-header" onClick={() => setShowChordSorter(!showChordSorter)}>
                     <strong>Chord Sorter</strong>
+                    <Button variant="link" size="sm" className="setop-toggle">
+                        {showChordSorter ? '▾' : '▸'}
+                    </Button>
                 </div>
-                <div className="setop-body">
-                    <Form.Control
-                        as="textarea"
-                        rows={2}
-                        placeholder={'Enter space-separated Forte numbers to sort (e.g. "3-11A 3-11B 3-4").'}
-                        value={chordSorterText}
-                        onChange={e => setChordSorterText(e.target.value)}
-                        className="list-search"
-                        size="sm"
-                    />
-                    <div style={{ marginTop: '8px', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <Form.Label style={{ marginBottom: 0 }}>Rotate:</Form.Label>
+                {showChordSorter && (
+                    <div className="setop-body">
                         <Form.Control
-                            type="number"
-                            value={chordSorterRotate}
-                            onChange={e => setChordSorterRotate(parseInt(e.target.value, 10) || 0)}
-                            style={{ width: '6ch' }}
+                            as="textarea"
+                            rows={2}
+                            placeholder={'Enter space-separated Forte numbers to sort (e.g. "3-11A 3-11B 3-4").'}
+                            value={chordSorterText}
+                            onChange={e => setChordSorterText(e.target.value)}
+                            className="list-search"
                             size="sm"
                         />
-                        <Button size="sm" onClick={() => computeChordSort()}>Sort</Button>
-                        <Button size="sm" variant="secondary" onClick={() => { setChordSorterText(''); setChordSorterResult(''); setChordSorterError(''); }}>Clear</Button>
-                        <Button size="sm" variant="outline-info" onClick={() => copyToClipboard(chordSorterResult)} disabled={!chordSorterResult}>Copy</Button>
-                    </div>
-                    {chordSorterError && (
-                        <div style={{ marginTop: '6px', color: '#dc3545', fontSize: '0.9rem' }}>{chordSorterError}</div>
-                    )}
-                    {chordSorterResult && (
-                        <div style={{ marginTop: '8px', overflowX: 'auto' }}>
-                            <strong>Result:</strong>
-                            <span style={{ marginLeft: '8px', whiteSpace: 'pre' }}>{chordSorterResult}</span>
+                        <div style={{ marginTop: '8px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <Form.Label style={{ marginBottom: 0 }}>Rotate:</Form.Label>
+                            <Form.Control
+                                type="number"
+                                value={chordSorterRotate}
+                                onChange={e => setChordSorterRotate(parseInt(e.target.value, 10) || 0)}
+                                style={{ width: '6ch' }}
+                                size="sm"
+                            />
+                            <Button size="sm" onClick={(e) => { e.stopPropagation(); computeChordSort(); }}>Sort</Button>
+                            <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); setChordSorterText(''); setChordSorterResult(''); setChordSorterError(''); }}>Clear</Button>
+                            <Button size="sm" variant="outline-info" onClick={(e) => { e.stopPropagation(); copyToClipboard(chordSorterResult); }} disabled={!chordSorterResult}>Copy</Button>
                         </div>
-                    )}
-                </div>
+                        {chordSorterError && (
+                            <div style={{ marginTop: '6px', color: '#dc3545', fontSize: '0.9rem' }}>{chordSorterError}</div>
+                        )}
+                        {chordSorterResult && (
+                            <div style={{ marginTop: '8px', overflowX: 'auto' }}>
+                                <strong>Result:</strong>
+                                <span style={{ marginLeft: '8px', whiteSpace: 'pre' }}>{chordSorterResult}</span>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
             <table className="kcomplex-table">
                 <tbody>
