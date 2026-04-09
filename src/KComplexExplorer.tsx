@@ -327,12 +327,26 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const [chordSorterText, setChordSorterText] = useState('');
     const [chordSorterRotate, setChordSorterRotate] = useState(0);
     const [chordSorterResult, setChordSorterResult] = useState('');
+    const [chordSorterError, setChordSorterError] = useState('');
 
     const computeChordSort = useCallback(() => {
+        setChordSorterError('');
         const tokens = chordSorterText.trim().split(/\s+/).filter(Boolean);
-        const chords: PCS12[] = tokens.map(t => PCS12.parseForte(t)).filter(Boolean) as PCS12[];
-        const sorted = chords.slice().sort((a, b) => a.rotatedCompareTo(b, chordSorterRotate));
-        setChordSorterResult(sorted.map(c => c.toString()).join(' '));
+        const invalid: string[] = [];
+        const chords: PCS12[] = [];
+        for (const t of tokens) {
+            const c = PCS12.parseForte(t);
+            if (c) {
+                chords.push(c);
+            } else {
+                invalid.push(t);
+            }
+        }
+        if (invalid.length > 0) {
+            setChordSorterError(`Invalid Forte number(s): ${invalid.join(', ')}`);
+        }
+        chords.sort((a, b) => a.rotatedCompareTo(b, chordSorterRotate));
+        setChordSorterResult(chords.map(c => c.toString()).join(' '));
     }, [chordSorterText, chordSorterRotate]);
 
     return (
@@ -474,9 +488,12 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                             size="sm"
                         />
                         <Button size="sm" onClick={() => computeChordSort()}>Sort</Button>
-                        <Button size="sm" variant="secondary" onClick={() => { setChordSorterText(''); setChordSorterResult(''); }}>Clear</Button>
+                        <Button size="sm" variant="secondary" onClick={() => { setChordSorterText(''); setChordSorterResult(''); setChordSorterError(''); }}>Clear</Button>
                         <Button size="sm" variant="outline-info" onClick={() => copyToClipboard(chordSorterResult)} disabled={!chordSorterResult}>Copy</Button>
                     </div>
+                    {chordSorterError && (
+                        <div style={{ marginTop: '6px', color: '#dc3545', fontSize: '0.9rem' }}>{chordSorterError}</div>
+                    )}
                     {chordSorterResult && (
                         <div style={{ marginTop: '8px', overflowX: 'auto' }}>
                             <strong>Result:</strong>

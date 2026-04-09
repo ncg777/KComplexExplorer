@@ -276,9 +276,9 @@ export function zRelations(forte: string): { chord: PCS12Analysis; zMates: PCS12
  * @param rotate       - rotation parameter passed to rotatedCompareTo
  */
 export function sortChords(forteNumbers: string[], rotate: number): PCS12Analysis[] {
-  const chords: PCS12[] = forteNumbers.map(f => {
-    const pcs = parseForteNormalized(f);
-    if (!pcs) throw new Error(`Invalid Forte number: "${f}"`);
+  const chords: PCS12[] = forteNumbers.map(forteNumber => {
+    const pcs = parseForteNormalized(forteNumber);
+    if (!pcs) throw new Error(`Invalid Forte number: "${forteNumber}"`);
     return pcs;
   });
 
