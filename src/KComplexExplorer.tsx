@@ -323,6 +323,32 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         setPolychordResult(out.join(' '));
     }, [polychordText, selectedScale]);
 
+    // Chord Sorter UI state and computation
+    const [chordSorterText, setChordSorterText] = useState('');
+    const [chordSorterRotate, setChordSorterRotate] = useState(0);
+    const [chordSorterResult, setChordSorterResult] = useState('');
+    const [chordSorterError, setChordSorterError] = useState('');
+
+    const computeChordSort = useCallback(() => {
+        setChordSorterError('');
+        const tokens = chordSorterText.trim().split(/\s+/).filter(Boolean);
+        const invalid: string[] = [];
+        const chords: PCS12[] = [];
+        for (const t of tokens) {
+            const c = PCS12.parseForte(t);
+            if (c) {
+                chords.push(c);
+            } else {
+                invalid.push(t);
+            }
+        }
+        if (invalid.length > 0) {
+            setChordSorterError(`Invalid Forte number(s): ${invalid.join(', ')}`);
+        }
+        chords.sort((a, b) => a.rotatedCompareTo(b, chordSorterRotate));
+        setChordSorterResult(chords.map(c => c.toString()).join(' '));
+    }, [chordSorterText, chordSorterRotate]);
+
     return (
         <div className="KComplexExplorer">
             <div className="header">
@@ -435,6 +461,45 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                         </div>
                     </div>
                     <div style={{ marginTop: '6px', fontSize: '0.9rem', color: '#999' }}>Example: "3-11A 3-11B, 4-19"</div>
+                </div>
+            </div>
+            {/* Chord Sorter panel */}
+            <div className="setop-panel" style={{ marginTop: '8px' }}>
+                <div className="setop-header">
+                    <strong>Chord Sorter</strong>
+                </div>
+                <div className="setop-body">
+                    <Form.Control
+                        as="textarea"
+                        rows={2}
+                        placeholder={'Enter space-separated Forte numbers to sort (e.g. "3-11A 3-11B 3-4").'}
+                        value={chordSorterText}
+                        onChange={e => setChordSorterText(e.target.value)}
+                        className="list-search"
+                        size="sm"
+                    />
+                    <div style={{ marginTop: '8px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <Form.Label style={{ marginBottom: 0 }}>Rotate:</Form.Label>
+                        <Form.Control
+                            type="number"
+                            value={chordSorterRotate}
+                            onChange={e => setChordSorterRotate(parseInt(e.target.value, 10) || 0)}
+                            style={{ width: '6ch' }}
+                            size="sm"
+                        />
+                        <Button size="sm" onClick={() => computeChordSort()}>Sort</Button>
+                        <Button size="sm" variant="secondary" onClick={() => { setChordSorterText(''); setChordSorterResult(''); setChordSorterError(''); }}>Clear</Button>
+                        <Button size="sm" variant="outline-info" onClick={() => copyToClipboard(chordSorterResult)} disabled={!chordSorterResult}>Copy</Button>
+                    </div>
+                    {chordSorterError && (
+                        <div style={{ marginTop: '6px', color: '#dc3545', fontSize: '0.9rem' }}>{chordSorterError}</div>
+                    )}
+                    {chordSorterResult && (
+                        <div style={{ marginTop: '8px', overflowX: 'auto' }}>
+                            <strong>Result:</strong>
+                            <span style={{ marginLeft: '8px', whiteSpace: 'pre' }}>{chordSorterResult}</span>
+                        </div>
+                    )}
                 </div>
             </div>
             <table className="kcomplex-table">
@@ -592,6 +657,12 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                         Chords whose Forte number contains a "z" share their interval vector with other distinct set classes.
                         When viewing a z-chord, a <strong>Z</strong> button appears in the popover. Click it to see all
                         chords that share the same interval vector.
+                    </p>
+                    <h6>Chord Sorter:</h6>
+                    <p>
+                        Enter a space-separated list of Forte numbers and a rotation value, then click <strong>Sort</strong>
+                        to order them using the rotated binary-sequence comparison (rotatedCompareTo). The sorted Forte
+                        numbers are displayed and can be copied to the clipboard.
                     </p>
                 </Modal.Body>
                 <Modal.Footer>

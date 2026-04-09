@@ -11,6 +11,7 @@ import {
   zRelations,
   computePolychordMasks,
   transpose,
+  sortChords,
   formatAnalysis,
 } from './pcs12-operations.js';
 
@@ -56,6 +57,10 @@ Commands:
   transpose <forte> <semitones>
       Transpose a pitch-class set by a number of semitones.
       Example: kcomplex transpose 3-11A 5
+
+  sort-chords <forte1> <forte2> [<forte3> ...] [--rotate <n>]
+      Sort pitch-class sets using rotatedCompareTo with the given rotation.
+      Example: kcomplex sort-chords 3-11A 3-11B 3-4 --rotate 3
 
 Options:
   --help, -h    Show this help message
@@ -251,6 +256,22 @@ async function main(): Promise<void> {
         console.error(`Error: ${err.message}`);
         process.exit(1);
       }
+      break;
+    }
+
+    case 'sort-chords': {
+      if (positional.length < 1) {
+        console.error('Error: sort-chords requires at least one Forte number.');
+        process.exit(1);
+      }
+      const rotateRaw = flags['rotate'];
+      const rotate = typeof rotateRaw === 'string' ? parseInt(rotateRaw, 10) : 0;
+      if (isNaN(rotate)) {
+        console.error('Error: --rotate must be a number.');
+        process.exit(1);
+      }
+      const results = sortChords(positional, rotate);
+      output(results, asJson);
       break;
     }
 

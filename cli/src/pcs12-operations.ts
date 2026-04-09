@@ -270,6 +270,24 @@ export function zRelations(forte: string): { chord: PCS12Analysis; zMates: PCS12
 }
 
 /**
+ * Sort a list of PCS given by Forte numbers using rotatedCompareTo.
+ *
+ * @param forteNumbers - list of Forte number strings to sort
+ * @param rotate       - rotation parameter passed to rotatedCompareTo
+ */
+export function sortChords(forteNumbers: string[], rotate: number): PCS12Analysis[] {
+  const chords: PCS12[] = forteNumbers.map(forteNumber => {
+    const pcs = parseForteNormalized(forteNumber);
+    if (!pcs) throw new Error(`Invalid Forte number: "${forteNumber}"`);
+    return pcs;
+  });
+
+  return chords
+    .sort((a, b) => a.rotatedCompareTo(b, rotate))
+    .map(analyzePCS12);
+}
+
+/**
  * Transpose a PCS by a given number of semitones.
  */
 export function transpose(forte: string, semitones: number): PCS12Analysis {

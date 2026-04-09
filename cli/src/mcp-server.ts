@@ -14,6 +14,7 @@ import {
   zRelations,
   computePolychordMasks,
   transpose,
+  sortChords,
   formatAnalysis,
   type PCS12Analysis,
 } from './pcs12-operations.js';
@@ -223,6 +224,26 @@ async function main(): Promise<void> {
         const result = transpose(forte, semitones);
         return {
           content: [{ type: 'text' as const, text: formatResult(result) }],
+        };
+      } catch (err: any) {
+        return { content: [{ type: 'text' as const, text: `Error: ${err.message}` }], isError: true };
+      }
+    },
+  );
+
+  // Tool: sort_chords
+  server.tool(
+    'sort_chords',
+    'Sort a list of pitch-class sets using rotatedCompareTo. Provide a list of Forte numbers and an optional rotation value.',
+    {
+      forteNumbers: z.array(z.string()).min(1).describe('Array of Forte numbers to sort (e.g., ["3-11A", "3-11B", "3-4"])'),
+      rotate: z.number().int().default(0).describe('Rotation parameter for rotatedCompareTo (default: 0)'),
+    },
+    async ({ forteNumbers, rotate }) => {
+      try {
+        const results = sortChords(forteNumbers, rotate);
+        return {
+          content: [{ type: 'text' as const, text: formatMultipleResults(results) }],
         };
       } catch (err: any) {
         return { content: [{ type: 'text' as const, text: `Error: ${err.message}` }], isError: true };
