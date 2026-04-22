@@ -1,6 +1,7 @@
 import React from 'react';
 import { ListGroup, OverlayTrigger, Popover, Button } from 'react-bootstrap';
 import { PCS12 } from 'ultra-mega-enumerator';
+import { getIntervalVectorEntropyMetrics } from './intervalVectorEntropy';
 
 interface ChordListItemProps {
     chord: PCS12;
@@ -18,16 +19,20 @@ interface ChordListItemProps {
     onSelectInMainList?: (chord: PCS12) => void;
 }
 
-export const ChordDetails: React.FC<{ chord: PCS12 }> = ({ chord }) => (
-    <>
-        <strong>Common name(s): </strong>{chord.getCommonName() || 'None'}<br />
-        <strong>Pitch classes: </strong>{chord.combinationString()}<br />
-        <strong>Intervals: </strong>{chord.getIntervals().map(x => String(x)).join(" ")}<br />
-        <strong>Interval vector: </strong>{chord.getIntervalVector()?.join(' ') || '[]'}<br />
-        <strong>Symmetries: </strong>{chord.getSymmetries().map(x => String(x)).join(" ") || "None"}<br />
-        <strong>Tension partition: </strong>{chord.getTensionPartition().map(x => String(x)).join(" ") || "None"}
-    </>
-);
+export const ChordDetails: React.FC<{ chord: PCS12 }> = ({ chord }) => {
+    const { entropy, level } = getIntervalVectorEntropyMetrics(chord);
+    return (
+        <>
+            <strong>Common name(s): </strong>{chord.getCommonName() || 'None'}<br />
+            <strong>Pitch classes: </strong>{chord.combinationString()}<br />
+            <strong>Intervals: </strong>{chord.getIntervals().map(x => String(x)).join(" ")}<br />
+            <strong>Interval vector: </strong>{chord.getIntervalVector()?.join(' ') || '[]'}<br />
+            <strong>Interval vector entropy: </strong>{entropy.toFixed(3)} ({level})<br />
+            <strong>Symmetries: </strong>{chord.getSymmetries().map(x => String(x)).join(" ") || "None"}<br />
+            <strong>Tension partition: </strong>{chord.getTensionPartition().map(x => String(x)).join(" ") || "None"}
+        </>
+    );
+};
 
 const ChordListItem: React.FC<ChordListItemProps> = ({
     chord,

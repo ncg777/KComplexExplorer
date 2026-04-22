@@ -46,7 +46,7 @@ async function main(): Promise<void> {
   // Tool: analyze
   server.tool(
     'analyze',
-    'Analyze a pitch-class set by its Forte number. Returns common name, pitch classes, intervals, interval vector, symmetries, tension partition, and cardinality.',
+    'Analyze a pitch-class set by its Forte number. Returns common name, pitch classes, intervals, interval vector, interval-vector entropy (low/mid/high), symmetries, tension partition, and cardinality.',
     {
       forte: z.string().describe('Forte number of the pitch-class set (e.g., "3-11A", "7-35", "6-z29")'),
     },
