@@ -4,6 +4,7 @@ import { PCS12 } from 'ultra-mega-enumerator';
 import { SubsetOf, SupersetOf } from 'ultra-mega-enumerator';
 import PCS12Identifier from './PCS12Identifier';
 import ChordListItem, { ChordDetails } from './ChordListItem';
+import { getIntervalVectorEntropyMetrics } from './intervalVectorEntropy';
 import './KComplexExplorer.css';
 import * as Tone from 'tone';
 import { useSynth } from './SynthContext'; // Import the useSynth hook
@@ -647,7 +648,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                     <h6>Pitch Class Sets:</h6>
                     <p>
                         Click on a pitch class set to see its details, including common names, pitch classes, intervals, interval vector 
-                        and symmetries.
+                        entropy (low/mid/high), and symmetries.
                     </p>
                     <h6>Supersets and Subsets:</h6>
                     <p>
@@ -691,11 +692,16 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                     </Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    {zModalChord && (
-                        <div style={{ marginBottom: '12px' }}>
-                            <strong>Interval vector: </strong>{zModalChord.getIntervalVector()?.join(' ') || '[]'}
-                        </div>
-                    )}
+                    {zModalChord && (() => {
+                        const { entropy, level } = getIntervalVectorEntropyMetrics(zModalChord);
+                        return (
+                            <div style={{ marginBottom: '12px' }}>
+                                <strong>Interval vector: </strong>{zModalChord.getIntervalVector()?.join(' ') || '[]'}
+                                <br />
+                                <strong>Interval vector entropy: </strong>{entropy.toFixed(3)} ({level})
+                            </div>
+                        );
+                    })()}
                     {zMates.length === 0 ? (
                         <p>No Z-related chords found.</p>
                     ) : (

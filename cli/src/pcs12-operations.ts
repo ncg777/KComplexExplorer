@@ -1,4 +1,9 @@
 import { PCS12, SubsetOf, SupersetOf } from 'ultra-mega-enumerator';
+import {
+  classifyIntervalVectorEntropy,
+  getIntervalVectorEntropy,
+  type EntropyLevel,
+} from './interval-vector-entropy.js';
 
 /**
  * Normalize a Forte number string. If no rotation suffix is present
@@ -26,6 +31,8 @@ export interface PCS12Analysis {
   pitchClasses: number[];
   intervals: number[];
   intervalVector: number[];
+  intervalVectorEntropy: number;
+  intervalVectorEntropyLevel: EntropyLevel;
   symmetries: number[];
   tensionPartition: number[];
   cardinality: number;
@@ -44,12 +51,16 @@ export async function ensureInitialized(): Promise<void> {
  * Analyze a PCS12 object and return a structured result.
  */
 export function analyzePCS12(pcs: PCS12): PCS12Analysis {
+  const intervalVector = pcs.getIntervalVector() ?? [];
+  const intervalVectorEntropy = getIntervalVectorEntropy(intervalVector);
   return {
     forte: pcs.toString(),
     commonName: pcs.getCommonName() || 'None',
     pitchClasses: pcs.asSequence(),
     intervals: pcs.getIntervals(),
-    intervalVector: pcs.getIntervalVector() ?? [],
+    intervalVector,
+    intervalVectorEntropy,
+    intervalVectorEntropyLevel: classifyIntervalVectorEntropy(intervalVectorEntropy),
     symmetries: pcs.getSymmetries(),
     tensionPartition: pcs.getTensionPartition(),
     cardinality: pcs.getK(),
@@ -66,6 +77,7 @@ export function formatAnalysis(analysis: PCS12Analysis): string {
     `Pitch classes: ${analysis.pitchClasses.join(' ')}`,
     `Intervals: ${analysis.intervals.join(' ')}`,
     `Interval vector: ${analysis.intervalVector.join(' ')}`,
+    `Interval vector entropy: ${analysis.intervalVectorEntropy.toFixed(3)} (${analysis.intervalVectorEntropyLevel})`,
     `Symmetries: ${analysis.symmetries.join(' ') || 'None'}`,
     `Tension partition: ${analysis.tensionPartition.join(' ') || 'None'}`,
     `Cardinality (k): ${analysis.cardinality}`,
