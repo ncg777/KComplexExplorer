@@ -113,6 +113,14 @@ h4 {
     position: relative;
 }
 
+.header-actions {
+    position: absolute;
+    right: 0;
+    top: -5px;
+    display: flex;
+    gap: 0.5rem;
+}
+
 .help-version {
     color: #ff4fd8;
     font-size: 0.7em;
@@ -130,6 +138,11 @@ h4 {
     margin-right:5px;
     margin-top:0px;
     margin-bottom: 0px;
+}
+
+.sentiment-button {
+    min-width: 3rem;
+    font-weight: 600;
 }
 
 .copybutton {
