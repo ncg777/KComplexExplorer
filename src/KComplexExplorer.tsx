@@ -305,7 +305,6 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         const anchor = document.createElement('a');
         anchor.href = url;
         anchor.download = 'pitch-class-set-sentiments.csv';
-        anchor.style.display = 'none';
         document.body.appendChild(anchor);
         anchor.click();
         window.setTimeout(() => {
