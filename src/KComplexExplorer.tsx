@@ -572,7 +572,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                         playChordSeq={playChordSeq}
                                         playChordSimul={playChordSimul}
                                         copyToClipboard={copyToClipboard}
-                                        sentiment={sentiments[chord.toString()] ?? 0}
+                                        sentiment={sentiments[chord.toString()] ?? null}
                                         onSentimentChange={updateSentiment}
                                         onAddToSetOp={addToSetOp}
                                         onShowZRelations={showZRelations}
@@ -609,7 +609,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                         playChordSeq={playChordSeq}
                                         playChordSimul={playChordSimul}
                                         copyToClipboard={copyToClipboard}
-                                        sentiment={sentiments[chord.toString()] ?? 0}
+                                        sentiment={sentiments[chord.toString()] ?? null}
                                         onSentimentChange={updateSentiment}
                                         onAddToSetOp={addToSetOp}
                                         onShowZRelations={showZRelations}
@@ -648,7 +648,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                         playChordSeq={playChordSeq}
                                         playChordSimul={playChordSimul}
                                         copyToClipboard={copyToClipboard}
-                                        sentiment={sentiments[chord.toString()] ?? 0}
+                                        sentiment={sentiments[chord.toString()] ?? null}
                                         onSentimentChange={updateSentiment}
                                         onAddToSetOp={addToSetOp}
                                         onShowZRelations={showZRelations}

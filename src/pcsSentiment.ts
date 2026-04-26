@@ -1,52 +1,27 @@
 import { PCS12 } from 'ultra-mega-enumerator';
 import { getIntervalVectorEntropyMetrics } from './intervalVectorEntropy';
 
-export type SentimentValue = -1 | 0 | 1;
+export type SentimentValue = -1 | 0 | 1 | null;
 export type SentimentMap = Record<string, SentimentValue>;
 
 export const PCS_SENTIMENT_STORAGE_KEY = 'kcomplex-pcs-sentiments';
 
 const PITCH_CLASS_COUNT = 12;
 
-// A starting heuristic to pre-label pitch class sets
-function synthesizeTrit(vector: number[]): SentimentValue {
-    const [v1, v2, v3, v4, v5, v6] = vector;
-
-    const load = v1 + (v6 * 2);
-    const capacity = (v5 * 2) + (v3 + v4) + (v2 * 0.5);
-
-    if (v5 === 0) return 0;
-    if (load > capacity || (v1 > 0 && v6 > 0)) return -1;
-    if (load > 0 && load <= capacity) return 1;
-
-    return 0;
-}
-
-function buildDefaultSentiments(): SentimentMap {
-    const result: SentimentMap = {};
-    for (const chord of PCS12.getChords()) {
-        const iv = chord.getIntervalVector();
-        if (iv) {
-            result[chord.toString()] = synthesizeTrit(iv);
-        }
-    }
-    return result;
-}
-
 export function loadSentiments(): SentimentMap {
-    if (typeof window === 'undefined') return buildDefaultSentiments();
+    if (typeof window === 'undefined') return {};
 
     try {
         const raw = window.localStorage.getItem(PCS_SENTIMENT_STORAGE_KEY);
-        if (!raw) return buildDefaultSentiments();
+        if (!raw) return {};
 
         const parsed = JSON.parse(raw) as Record<string, unknown>;
         return Object.fromEntries(
             Object.entries(parsed).filter(([, value]) => value === -1 || value === 0 || value === 1)
         ) as SentimentMap;
     } catch (error) {
-        console.error('Unable to load saved pitch class set sentiments, possibly because local storage data is corrupted. Sentiments will reset to neutral until you save them again.', error);
-        return buildDefaultSentiments();
+        console.error('Unable to load saved pitch class set sentiments, possibly because local storage data is corrupted. Sentiments will reset until you save them again.', error);
+        return {};
     }
 }
 
@@ -98,7 +73,7 @@ export function buildPitchClassSetSentimentCsv(sentiments: SentimentMap): string
 
     for (const chord of chords) {
         const forte = chord.toString();
-        const sentiment = sentiments[forte] ?? 0;
+        const sentiment = sentiments[forte] ?? null;
         const { entropy, level } = getIntervalVectorEntropyMetrics(chord);
         const iv = chord.getIntervalVector() ?? [];
 
@@ -117,7 +92,7 @@ export function buildPitchClassSetSentimentCsv(sentiments: SentimentMap): string
             level,
             chord.getSymmetries().map(value => String(value)).join(' ') || 'None',
             chord.getTensionPartition().map(value => String(value)).join(' ') || 'None',
-            String(sentiment),
+            sentiment !== null ? String(sentiment) : '',
         ]);
     }
 
