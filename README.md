@@ -17,7 +17,7 @@
 - **Installable PWA:** KComplexExplorer is a Progressive Web App—install it as an app on your computer, phone, or tablet for offline use and a native experience.
 - **PCS12 Class Powered (from [ultra-mega-enumerator](https://github.com/ncg777/ultra-mega-enumerator)):**
   - Efficient identification, transposition, and rotation of sets.
-  - Calculation of Forte numbers, common names, interval vectors, and interval-vector entropy (low/mid/high percentile bands).
+  - Calculation of Forte numbers, common names, interval vectors, and interval-vector entropy (low/mid/high percentile bands grouped by set cardinality).
   - Set operations: intersection, union, difference, and analysis of symmetries and potential tonal centers.
 - **Fast Enumeration:** Uses efficient combinatorial algorithms for exhaustive, duplicate-free set exploration.
 - **Extensible Foundation:** Built to connect with other music-theoretic and computational tools.

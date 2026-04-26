@@ -27,29 +27,47 @@ function percentile(sortedValues: number[], p: number): number {
   return sortedValues[lower] * (1 - weight) + sortedValues[upper] * weight;
 }
 
-let cachedThresholds: { lowToMid: number; midToHigh: number } | null = null;
+type EntropyThresholds = { lowToMid: number; midToHigh: number };
 
-function getEntropyThresholds(): { lowToMid: number; midToHigh: number } {
-  if (cachedThresholds) return cachedThresholds;
+let cachedThresholdsByCardinality: Map<number, EntropyThresholds> | null = null;
 
-  const entropies = Array.from(PCS12.getChords())
-    .map(chord => computeEntropyFromVector(chord.getIntervalVector()))
-    .sort((a, b) => a - b);
+function getEntropyThresholdsByCardinality(): Map<number, EntropyThresholds> {
+  if (cachedThresholdsByCardinality) return cachedThresholdsByCardinality;
 
-  cachedThresholds = {
-    lowToMid: percentile(entropies, 0.33),
-    midToHigh: percentile(entropies, 0.66),
-  };
+  const entropiesByCardinality = new Map<number, number[]>();
+  for (const chord of PCS12.getChords()) {
+    const cardinality = chord.getK();
+    const entropies = entropiesByCardinality.get(cardinality);
+    const entropy = computeEntropyFromVector(chord.getIntervalVector());
+    if (entropies) {
+      entropies.push(entropy);
+    } else {
+      entropiesByCardinality.set(cardinality, [entropy]);
+    }
+  }
 
-  return cachedThresholds;
+  cachedThresholdsByCardinality = new Map(
+    Array.from(entropiesByCardinality.entries(), ([cardinality, entropies]) => {
+      entropies.sort((a, b) => a - b);
+      return [cardinality, {
+        lowToMid: percentile(entropies, 0.33),
+        midToHigh: percentile(entropies, 0.66),
+      }];
+    }),
+  );
+
+  return cachedThresholdsByCardinality;
 }
 
 export function getIntervalVectorEntropy(intervalVector: number[] | null | undefined): number {
   return computeEntropyFromVector(intervalVector);
 }
 
-export function classifyIntervalVectorEntropy(entropy: number): EntropyLevel {
-  const thresholds = getEntropyThresholds();
+export function classifyIntervalVectorEntropy(entropy: number, cardinality: number): EntropyLevel {
+  const thresholds = getEntropyThresholdsByCardinality().get(cardinality);
+  if (!thresholds) {
+    throw new RangeError(`No entropy thresholds available for cardinality ${cardinality}.`);
+  }
   if (entropy <= thresholds.lowToMid) return 'Low';
   if (entropy <= thresholds.midToHigh) return 'Mid';
   return 'High';
@@ -57,5 +75,5 @@ export function classifyIntervalVectorEntropy(entropy: number): EntropyLevel {
 
 export function getIntervalVectorEntropyMetrics(chord: PCS12): { entropy: number; level: EntropyLevel } {
   const entropy = getIntervalVectorEntropy(chord.getIntervalVector());
-  return { entropy, level: classifyIntervalVectorEntropy(entropy) };
+  return { entropy, level: classifyIntervalVectorEntropy(entropy, chord.getK()) };
 }

@@ -60,7 +60,7 @@ export function analyzePCS12(pcs: PCS12): PCS12Analysis {
     intervals: pcs.getIntervals(),
     intervalVector,
     intervalVectorEntropy,
-    intervalVectorEntropyLevel: classifyIntervalVectorEntropy(intervalVectorEntropy),
+    intervalVectorEntropyLevel: classifyIntervalVectorEntropy(intervalVectorEntropy, pcs.getK()),
     symmetries: pcs.getSymmetries(),
     tensionPartition: pcs.getTensionPartition(),
     cardinality: pcs.getK(),
