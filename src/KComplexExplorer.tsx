@@ -401,12 +401,6 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                 </Form.Group>
                 <div className="header-actions">
                     <Button
-                        variant="success"
-                        onClick={exportSentimentsToCsv}
-                    >
-                        Export CSV
-                    </Button>
-                    <Button
                         variant="info"
                         onClick={() => setShowPcs12Modal(true)}
                     >
@@ -667,6 +661,14 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                     </tr>
                 </tbody>
             </table>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 0' }}>
+                <Button
+                    variant="success"
+                    onClick={exportSentimentsToCsv}
+                >
+                    Export CSV
+                </Button>
+            </div>
             {/* Help Modal */}
             <Modal show={showHelpModal} onHide={() => setShowHelpModal(false)} backdrop="static" keyboard={false}>
                 <Modal.Header closeButton>
