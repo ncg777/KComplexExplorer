@@ -52,6 +52,18 @@ function parseForteNumber(forte: string): ForteNumberParts {
     };
 }
 
+function getPitchClassFlags(chord: PCS12): string[] {
+    const flags = Array.from({ length: PITCH_CLASS_COUNT }, () => '0');
+
+    for (const pitchClass of chord.asSequence()) {
+        if (pitchClass >= 0 && pitchClass < PITCH_CLASS_COUNT) {
+            flags[pitchClass] = '1';
+        }
+    }
+
+    return flags;
+}
+
 function escapeCsvValue(value: string | number | boolean): string {
     const text = String(value);
     if (!/[",\n]/.test(text)) return text;
@@ -114,7 +126,7 @@ export function buildPitchClassSetSentimentCsv(sentiments: SentimentMap): string
             String(parseForteNumber(forte).ab),
             String(parseForteNumber(forte).transposition),
             chord.getCommonName() || 'None',
-            ...chord.getBitSetAsBooleanArray().slice(0, PITCH_CLASS_COUNT).map(bit => bit ? '1' : '0'),
+            ...getPitchClassFlags(chord),
             chord.getIntervals().map(value => String(value)).join(' '),
             String(iv[0] ?? ''),
             String(iv[1] ?? ''),
