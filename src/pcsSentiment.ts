@@ -30,6 +30,28 @@ export function saveSentiments(sentiments: SentimentMap) {
     window.localStorage.setItem(PCS_SENTIMENT_STORAGE_KEY, JSON.stringify(sentiments));
 }
 
+interface ForteNumberParts {
+    numNotes: number;
+    hasZ: number;
+    order: number;
+    ab: number;
+    transposition: number;
+}
+
+function parseForteNumber(forte: string): ForteNumberParts {
+    const match = forte.match(/^(\d+)-(Z?)(\d+)([AB]?)(?:\.(\d+))?$/);
+    if (!match) {
+        return { numNotes: 0, hasZ: 0, order: 0, ab: 0, transposition: 0 };
+    }
+    return {
+        numNotes: parseInt(match[1], 10),
+        hasZ: match[2] === 'Z' ? 1 : 0,
+        order: parseInt(match[3], 10),
+        ab: match[4] === 'A' ? 1 : match[4] === 'B' ? -1 : 0,
+        transposition: match[5] !== undefined ? parseInt(match[5], 10) : 0,
+    };
+}
+
 function escapeCsvValue(value: string | number | boolean): string {
     const text = String(value);
     if (!/[",\n]/.test(text)) return text;
@@ -42,6 +64,11 @@ export function buildPitchClassSetSentimentCsv(sentiments: SentimentMap): string
     const rows = [
         [
             'forte_number',
+            'forte_num_notes',
+            'forte_has_z',
+            'forte_order',
+            'forte_ab',
+            'forte_transposition',
             'common_names',
             'pc0',
             'pc1',
@@ -81,6 +108,11 @@ export function buildPitchClassSetSentimentCsv(sentiments: SentimentMap): string
 
         rows.push([
             forte,
+            String(parseForteNumber(forte).numNotes),
+            String(parseForteNumber(forte).hasZ),
+            String(parseForteNumber(forte).order),
+            String(parseForteNumber(forte).ab),
+            String(parseForteNumber(forte).transposition),
             chord.getCommonName() || 'None',
             ...chord.getBitSetAsBooleanArray().slice(0, PITCH_CLASS_COUNT).map(bit => bit ? '1' : '0'),
             chord.getIntervals().map(value => String(value)).join(' '),
