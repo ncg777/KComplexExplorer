@@ -132,6 +132,11 @@ h4 {
     margin-bottom: 0px;
 }
 
+.sentiment-button {
+    min-width: 3rem;
+    font-weight: 600;
+}
+
 .copybutton {
     padding:1px;
     margin-left:5px;

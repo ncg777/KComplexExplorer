@@ -2,6 +2,7 @@ import React from 'react';
 import { ListGroup, OverlayTrigger, Popover, Button } from 'react-bootstrap';
 import { PCS12 } from 'ultra-mega-enumerator';
 import { getIntervalVectorEntropyMetrics } from './intervalVectorEntropy';
+import { SentimentValue } from './pcsSentiment';
 
 interface ChordListItemProps {
     chord: PCS12;
@@ -14,6 +15,8 @@ interface ChordListItemProps {
     playChordSeq: (chord: PCS12, down?: boolean) => void;
     playChordSimul: (chord: PCS12) => void;
     copyToClipboard: (text: string) => void;
+    sentiment: SentimentValue;
+    onSentimentChange: (chord: PCS12, sentiment: SentimentValue) => void;
     onAddToSetOp?: (forte: string) => void;
     onShowZRelations?: (chord: PCS12) => void;
     onSelectInMainList?: (chord: PCS12) => void;
@@ -45,6 +48,8 @@ const ChordListItem: React.FC<ChordListItemProps> = ({
     playChordSeq,
     playChordSimul,
     copyToClipboard,
+    sentiment,
+    onSentimentChange,
     onAddToSetOp,
     onShowZRelations,
     onSelectInMainList,
@@ -95,6 +100,23 @@ const ChordListItem: React.FC<ChordListItemProps> = ({
                             title="Show Z-related chords"
                         >Z</Button>
                     )}
+                    <br />
+                    <strong>Sentiment: </strong>
+                    <Button
+                        className="playbutton sentiment-button"
+                        variant={sentiment === 1 ? 'success' : 'outline-success'}
+                        onClick={(e) => { e.stopPropagation(); onSentimentChange(chord, 1); }}
+                    >+1</Button>
+                    <Button
+                        className="playbutton sentiment-button"
+                        variant={sentiment === 0 ? 'warning' : 'outline-warning'}
+                        onClick={(e) => { e.stopPropagation(); onSentimentChange(chord, 0); }}
+                    >0</Button>
+                    <Button
+                        className="playbutton sentiment-button"
+                        variant={sentiment === -1 ? 'danger' : 'outline-danger'}
+                        onClick={(e) => { e.stopPropagation(); onSentimentChange(chord, -1); }}
+                    >-1</Button>
                     <br />
                     <ChordDetails chord={chord} />
                 </Popover.Body>

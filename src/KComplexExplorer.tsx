@@ -5,6 +5,7 @@ import { SubsetOf, SupersetOf } from 'ultra-mega-enumerator';
 import PCS12Identifier from './PCS12Identifier';
 import ChordListItem, { ChordDetails } from './ChordListItem';
 import { getIntervalVectorEntropyMetrics } from './intervalVectorEntropy';
+import { buildPitchClassSetSentimentCsv, loadSentiments, saveSentiments, SentimentValue } from './pcsSentiment';
 import './KComplexExplorer.css';
 import * as Tone from 'tone';
 import { useSynth } from './SynthContext'; // Import the useSynth hook
@@ -42,6 +43,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const [showZModal, setShowZModal] = useState(false);
     const [zModalChord, setZModalChord] = useState<PCS12 | null>(null);
     const [zMates, setZMates] = useState<PCS12[]>([]);
+    const [sentiments, setSentiments] = useState(() => loadSentiments());
 
     // Create refs for your lists
     const pcsListRef = useRef<HTMLDivElement>(null);
@@ -136,6 +138,10 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     useEffect(() => {
         refreshPcs();
     }, [selectedScale, refreshPcs]);
+
+    useEffect(() => {
+        saveSentiments(sentiments);
+    }, [sentiments]);
 
     const handleSelect = (chord: string) => {
         if (!chord || !PCS12.parseForte(chord)) {
@@ -285,6 +291,26 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         await navigator.clipboard.writeText(text);
     },[]);
 
+    const updateSentiment = useCallback((chord: PCS12, sentiment: SentimentValue) => {
+        setSentiments(prev => ({
+            ...prev,
+            [chord.toString()]: sentiment,
+        }));
+    }, []);
+
+    const exportSentimentsToCsv = useCallback(() => {
+        const csv = buildPitchClassSetSentimentCsv(sentiments);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+        const url = window.URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = 'pitch-class-set-sentiments.csv';
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        window.URL.revokeObjectURL(url);
+    }, [sentiments]);
+
     // Polychord UI state and computation
     const [showPolychord, setShowPolychord] = useState(false);
     const [polychordText, setPolychordText] = useState('');
@@ -373,6 +399,13 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                             ))}
                     </Form.Control>
                 </Form.Group>
+                <Button
+                    variant="success"
+                    style={{ position: 'absolute', right: '165px', top: '-5px' }}
+                    onClick={exportSentimentsToCsv}
+                >
+                    Export CSV
+                </Button>
                 <Button
                     variant="info"
                     style={{ position: 'absolute', right: '80px', top: '-5px' }}
@@ -546,6 +579,8 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                         playChordSeq={playChordSeq}
                                         playChordSimul={playChordSimul}
                                         copyToClipboard={copyToClipboard}
+                                        sentiment={sentiments[chord.toString()] ?? 0}
+                                        onSentimentChange={updateSentiment}
                                         onAddToSetOp={addToSetOp}
                                         onShowZRelations={showZRelations}
                                     />
@@ -581,6 +616,8 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                         playChordSeq={playChordSeq}
                                         playChordSimul={playChordSimul}
                                         copyToClipboard={copyToClipboard}
+                                        sentiment={sentiments[chord.toString()] ?? 0}
+                                        onSentimentChange={updateSentiment}
                                         onAddToSetOp={addToSetOp}
                                         onShowZRelations={showZRelations}
                                         onSelectInMainList={selectChordInMainList}
@@ -618,6 +655,8 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                         playChordSeq={playChordSeq}
                                         playChordSimul={playChordSimul}
                                         copyToClipboard={copyToClipboard}
+                                        sentiment={sentiments[chord.toString()] ?? 0}
+                                        onSentimentChange={updateSentiment}
                                         onAddToSetOp={addToSetOp}
                                         onShowZRelations={showZRelations}
                                         onSelectInMainList={selectChordInMainList}
@@ -649,6 +688,12 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                     <p>
                         Click on a pitch class set to see its details, including common names, pitch classes, intervals, interval vector 
                         entropy (low/mid/high), and symmetries.
+                    </p>
+                    <h6>Sentiment Labels &amp; CSV Export:</h6>
+                    <p>
+                        Each set popover now includes sentiment buttons: <strong>+1</strong> (like), <strong>0</strong>
+                        (neutral), and <strong>-1</strong> (dislike). Use <strong>Export CSV</strong> to download every
+                        known pitch class set with its current sentiment and analysis data for later modeling.
                     </p>
                     <h6>Supersets and Subsets:</h6>
                     <p>
