@@ -311,7 +311,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         window.setTimeout(() => {
             document.body.removeChild(anchor);
             URL.revokeObjectURL(url);
-        }, 0);
+        }, 100);
     }, [sentiments]);
 
     // Polychord UI state and computation
