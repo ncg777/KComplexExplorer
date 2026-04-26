@@ -6,6 +6,8 @@ export type SentimentMap = Record<string, SentimentValue>;
 
 export const PCS_SENTIMENT_STORAGE_KEY = 'kcomplex-pcs-sentiments';
 
+const PITCH_CLASS_COUNT = 12;
+
 // A starting heuristic to pre-label pitch class sets
 function synthesizeTrit(vector: number[]): SentimentValue {
     const [v1, v2, v3, v4, v5, v6] = vector;
@@ -64,7 +66,18 @@ export function buildPitchClassSetSentimentCsv(sentiments: SentimentMap): string
         [
             'forte_number',
             'common_names',
-            'pitch_classes',
+            'pc0',
+            'pc1',
+            'pc2',
+            'pc3',
+            'pc4',
+            'pc5',
+            'pc6',
+            'pc7',
+            'pc8',
+            'pc9',
+            'pc10',
+            'pc11',
             'intervals',
             'iv1',
             'iv2',
@@ -92,7 +105,7 @@ export function buildPitchClassSetSentimentCsv(sentiments: SentimentMap): string
         rows.push([
             forte,
             chord.getCommonName() || 'None',
-            chord.combinationString(),
+            ...chord.getBitSetAsBooleanArray().slice(0, PITCH_CLASS_COUNT).map(bit => bit ? '1' : '0'),
             chord.getIntervals().map(value => String(value)).join(' '),
             String(iv[0] ?? ''),
             String(iv[1] ?? ''),
