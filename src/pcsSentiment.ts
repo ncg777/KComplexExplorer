@@ -39,13 +39,13 @@ interface ForteNumberParts {
 }
 
 function parseForteNumber(forte: string): ForteNumberParts {
-    const match = forte.match(/^(\d+)-(Z?)(\d+)([AB]?)(?:\.(\d+))?$/);
+    const match = forte.match(/^(\d+)-(z?)(\d+)([AB]?)(?:\.(\d+))?$/);
     if (!match) {
         return { numNotes: 0, hasZ: 0, order: 0, ab: 0, transposition: 0 };
     }
     return {
         numNotes: parseInt(match[1], 10),
-        hasZ: match[2] === 'Z' ? 1 : 0,
+        hasZ: match[2] === 'z' ? 1 : 0,
         order: parseInt(match[3], 10),
         ab: match[4] === 'A' ? 1 : match[4] === 'B' ? -1 : 0,
         transposition: match[5] !== undefined ? parseInt(match[5], 10) : 0,
