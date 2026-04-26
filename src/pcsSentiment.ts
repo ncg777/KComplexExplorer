@@ -36,6 +36,8 @@ function escapeCsvValue(value: string | number | boolean): string {
     return `"${text.replace(/"/g, '""')}"`;
 }
 
+const SYMMETRY_VALUES = Array.from({ length: 24 }, (_, i) => i * 0.5);
+
 export function buildPitchClassSetSentimentCsv(sentiments: SentimentMap): string {
     const rows = [
         [
@@ -62,7 +64,7 @@ export function buildPitchClassSetSentimentCsv(sentiments: SentimentMap): string
             'iv6',
             'interval_vector_entropy',
             'interval_vector_entropy_level',
-            'symmetries',
+            ...SYMMETRY_VALUES.map(v => `sym_${v}`),
             'tension_partition',
             'sentiment',
         ],
@@ -90,7 +92,7 @@ export function buildPitchClassSetSentimentCsv(sentiments: SentimentMap): string
             String(iv[5] ?? ''),
             entropy.toFixed(3),
             level,
-            chord.getSymmetries().map(value => String(value)).join(' ') || 'None',
+            ...SYMMETRY_VALUES.map(v => chord.getSymmetries().includes(v) ? '1' : '0'),
             chord.getTensionPartition().map(value => String(value)).join(' ') || 'None',
             sentiment !== null ? String(sentiment) : '',
         ]);
