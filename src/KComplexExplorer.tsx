@@ -301,14 +301,17 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const exportSentimentsToCsv = useCallback(() => {
         const csv = buildPitchClassSetSentimentCsv(sentiments);
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-        const url = window.URL.createObjectURL(blob);
+        const url = URL.createObjectURL(blob);
         const anchor = document.createElement('a');
         anchor.href = url;
         anchor.download = 'pitch-class-set-sentiments.csv';
+        anchor.style.display = 'none';
         document.body.appendChild(anchor);
         anchor.click();
-        document.body.removeChild(anchor);
-        window.URL.revokeObjectURL(url);
+        window.setTimeout(() => {
+            document.body.removeChild(anchor);
+            URL.revokeObjectURL(url);
+        }, 0);
     }, [sentiments]);
 
     // Polychord UI state and computation
