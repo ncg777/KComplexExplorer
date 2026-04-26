@@ -396,30 +396,29 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                 <option key={`scale${chord}`} value={chord}>
                                     {chord}
                                 </option>
-                            ))}
+                        ))}
                     </Form.Control>
                 </Form.Group>
-                <Button
-                    variant="success"
-                    style={{ position: 'absolute', right: '165px', top: '-5px' }}
-                    onClick={exportSentimentsToCsv}
-                >
-                    Export CSV
-                </Button>
-                <Button
-                    variant="info"
-                    style={{ position: 'absolute', right: '80px', top: '-5px' }}
-                    onClick={() => setShowPcs12Modal(true)}
-                >
-                    Identify
-                </Button>
-                <Button
-                    variant="info"
-                    onClick={() => setShowHelpModal(true)}
-                    style={{ position: 'absolute', right: 0, top: '-5px'}}
-                >
-                    Help
-                </Button>
+                <div className="header-actions">
+                    <Button
+                        variant="success"
+                        onClick={exportSentimentsToCsv}
+                    >
+                        Export CSV
+                    </Button>
+                    <Button
+                        variant="info"
+                        onClick={() => setShowPcs12Modal(true)}
+                    >
+                        Identify
+                    </Button>
+                    <Button
+                        variant="info"
+                        onClick={() => setShowHelpModal(true)}
+                    >
+                        Help
+                    </Button>
+                </div>
             </div>
             {/* Set Operations Panel */}
             {(setOpItems.length > 0 || showSetOps) && (

@@ -113,6 +113,14 @@ h4 {
     position: relative;
 }
 
+.header-actions {
+    position: absolute;
+    right: 0;
+    top: -5px;
+    display: flex;
+    gap: 0.5rem;
+}
+
 .help-version {
     color: #ff4fd8;
     font-size: 0.7em;

@@ -18,7 +18,7 @@ export function loadSentiments(): SentimentMap {
             Object.entries(parsed).filter(([, value]) => value === -1 || value === 0 || value === 1)
         ) as SentimentMap;
     } catch (error) {
-        console.error('Unable to load pitch class set sentiments.', error);
+        console.error('Unable to load saved pitch class set sentiments. Sentiments will reset to neutral until saved again.', error);
         return {};
     }
 }
