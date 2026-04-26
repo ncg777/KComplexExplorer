@@ -65,7 +65,9 @@ export function getIntervalVectorEntropy(intervalVector: number[] | null | undef
 
 export function classifyIntervalVectorEntropy(entropy: number, cardinality: number): EntropyLevel {
   const thresholds = getEntropyThresholdsByCardinality().get(cardinality);
-  if (!thresholds) return 'Mid';
+  if (!thresholds) {
+    throw new RangeError(`No entropy thresholds available for cardinality ${cardinality}.`);
+  }
   if (entropy <= thresholds.lowToMid) return 'Low';
   if (entropy <= thresholds.midToHigh) return 'Mid';
   return 'High';
