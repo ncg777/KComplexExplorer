@@ -17,10 +17,10 @@ export function loadSentiments(): SentimentMap {
 
         const parsed = JSON.parse(raw) as Record<string, unknown>;
         return Object.fromEntries(
-            Object.entries(parsed).filter(([, value]) => value === -1 || value === 0 || value === 1)
+            Object.entries(parsed).filter(([, value]) => value === -1 || value === 0 || value === 1 || value === null)
         ) as SentimentMap;
     } catch (error) {
-        console.error('Unable to load saved pitch class set sentiments, possibly because local storage data is corrupted. Sentiments will reset until you save them again.', error);
+        console.error('Unable to load saved pitch class set sentiments, possibly because local storage data is corrupted. All sentiments will be unset (null) until you save them again.', error);
         return {};
     }
 }
