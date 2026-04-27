@@ -336,11 +336,11 @@ export async function trainSentimentModel(
                     patience: 20,
                     restoreBestWeight: true,
                 }),
-                {
+                new tf.CustomCallback({
                     onEpochEnd: async (epoch, logs) => {
                         onEpochEnd?.(epoch + 1, totalEpochs, logs);
                     },
-                },
+                }),
             ],
         });
 
