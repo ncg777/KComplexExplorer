@@ -3,6 +3,7 @@ import { ListGroup, OverlayTrigger, Popover, Button } from 'react-bootstrap';
 import { PCS12 } from 'ultra-mega-enumerator';
 import { getIntervalVectorEntropyMetrics } from './intervalVectorEntropy';
 import { SentimentValue } from './pcsSentiment';
+import { PredictedSentimentValue } from './pcsSentimentModel';
 
 interface ChordListItemProps {
     chord: PCS12;
@@ -16,6 +17,7 @@ interface ChordListItemProps {
     playChordSimul: (chord: PCS12) => void;
     copyToClipboard: (text: string) => void;
     sentiment: SentimentValue;
+    predictedSentiment?: PredictedSentimentValue | null;
     onSentimentChange: (chord: PCS12, sentiment: SentimentValue) => void;
     onAddToSetOp?: (forte: string) => void;
     onShowZRelations?: (chord: PCS12) => void;
@@ -49,6 +51,7 @@ const ChordListItem: React.FC<ChordListItemProps> = ({
     playChordSimul,
     copyToClipboard,
     sentiment,
+    predictedSentiment = null,
     onSentimentChange,
     onAddToSetOp,
     onShowZRelations,
@@ -117,6 +120,8 @@ const ChordListItem: React.FC<ChordListItemProps> = ({
                         variant={sentiment === -1 ? 'danger' : 'outline-danger'}
                         onClick={(e) => { e.stopPropagation(); onSentimentChange(chord, -1); }}
                     >-1</Button>
+                    <br />
+                    <strong>Predicted sentiment: </strong>{predictedSentiment === null ? '' : predictedSentiment}
                     <br />
                     <ChordDetails chord={chord} />
                 </Popover.Body>

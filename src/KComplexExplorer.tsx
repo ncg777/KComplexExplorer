@@ -1,17 +1,35 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ListGroup, Form, Button, Modal, Badge } from 'react-bootstrap';
+import { ListGroup, Form, Button, Modal, Badge, ProgressBar, Spinner, Alert } from 'react-bootstrap';
 import { PCS12 } from 'ultra-mega-enumerator';
 import { SubsetOf, SupersetOf } from 'ultra-mega-enumerator';
+import * as tf from '@tensorflow/tfjs';
 import PCS12Identifier from './PCS12Identifier';
 import ChordListItem, { ChordDetails } from './ChordListItem';
 import { getIntervalVectorEntropyMetrics } from './intervalVectorEntropy';
 import { buildPitchClassSetSentimentCsv, loadSentiments, saveSentiments, SentimentValue } from './pcsSentiment';
+import {
+    evaluateSentimentModel,
+    exportSentimentModel,
+    importSentimentModel,
+    loadStoredSentimentModel,
+    loadStoredSentimentPredictions,
+    loadStoredSentimentTrainingStats,
+    SentimentPredictionMap,
+    SentimentTrainingStats,
+    trainSentimentModel,
+} from './pcsSentimentModel';
 import './KComplexExplorer.css';
 import * as Tone from 'tone';
 import { useSynth } from './SynthContext'; // Import the useSynth hook
 
 interface KComplexExplorerProps {
     scale: string;
+}
+
+interface TrainingOverlayState {
+    isBusy: boolean;
+    progress: number;
+    message: string;
 }
     
 const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
@@ -44,6 +62,14 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const [zModalChord, setZModalChord] = useState<PCS12 | null>(null);
     const [zMates, setZMates] = useState<PCS12[]>([]);
     const [sentiments, setSentiments] = useState(() => loadSentiments());
+    const [predictedSentiments, setPredictedSentiments] = useState<SentimentPredictionMap>(() => loadStoredSentimentPredictions());
+    const [trainingStats, setTrainingStats] = useState<SentimentTrainingStats | null>(() => loadStoredSentimentTrainingStats());
+    const [hasStoredModel, setHasStoredModel] = useState(false);
+    const [trainingOverlay, setTrainingOverlay] = useState<TrainingOverlayState>({ isBusy: false, progress: 0, message: '' });
+    const [modelFeedback, setModelFeedback] = useState<string>('');
+    const modelRef = useRef<tf.LayersModel | null>(null);
+    const trainingStatsRef = useRef<SentimentTrainingStats | null>(trainingStats);
+    const importWeightsInputRef = useRef<HTMLInputElement>(null);
 
     // Create refs for your lists
     const pcsListRef = useRef<HTMLDivElement>(null);
@@ -71,6 +97,53 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         subsets.filter(c => matchesSearch(c, subsetSearch)),
         [subsets, subsetSearch, matchesSearch]
     );
+
+    const updateLoadedModel = useCallback((nextModel: tf.LayersModel | null) => {
+        if (modelRef.current && modelRef.current !== nextModel) {
+            modelRef.current.dispose();
+        }
+
+        modelRef.current = nextModel;
+        setHasStoredModel(nextModel !== null);
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const loadModel = async () => {
+            const storedModel = await loadStoredSentimentModel();
+            if (cancelled) {
+                storedModel?.dispose();
+                return;
+            }
+
+            updateLoadedModel(storedModel);
+
+            if (storedModel && Object.keys(loadStoredSentimentPredictions()).length === 0) {
+                const evaluation = await evaluateSentimentModel(storedModel, sentiments, trainingStats ?? undefined);
+                if (!cancelled) {
+                    setPredictedSentiments(evaluation.predictions);
+                    setTrainingStats(prev => prev ?? evaluation.stats);
+                }
+            }
+        };
+
+        loadModel().catch(error => {
+            console.error('Unable to initialize the stored sentiment model.', error);
+            if (!cancelled) {
+                setModelFeedback('Unable to load the saved neural-network weights.');
+            }
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [updateLoadedModel]);
+
+    useEffect(() => () => {
+        modelRef.current?.dispose();
+        modelRef.current = null;
+    }, []);
 
     // Set operation computation (intersection or union)
     const setOpResult = useMemo(() => {
@@ -141,6 +214,28 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
 
     useEffect(() => {
         saveSentiments(sentiments);
+    }, [sentiments]);
+
+    useEffect(() => {
+        trainingStatsRef.current = trainingStats;
+    }, [trainingStats]);
+
+    useEffect(() => {
+        if (!modelRef.current) return;
+
+        let cancelled = false;
+
+        evaluateSentimentModel(modelRef.current, sentiments, trainingStatsRef.current ?? undefined).then(result => {
+            if (cancelled) return;
+            setPredictedSentiments(result.predictions);
+            setTrainingStats(result.stats);
+        }).catch(error => {
+            console.error('Unable to refresh neural-network sentiment predictions.', error);
+        });
+
+        return () => {
+            cancelled = true;
+        };
     }, [sentiments]);
 
     const handleSelect = (chord: string) => {
@@ -312,6 +407,98 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
             URL.revokeObjectURL(url);
         }, 100);
     }, [sentiments]);
+
+    const handleTrainNeuralNetwork = useCallback(async () => {
+        setModelFeedback('');
+        setTrainingOverlay({
+            isBusy: true,
+            progress: 0,
+            message: 'Preparing sentiment training data...',
+        });
+
+        try {
+            const result = await trainSentimentModel(sentiments, (epoch, totalEpochs, logs) => {
+                const percent = Math.round((epoch / Math.max(totalEpochs, 1)) * 100);
+                const lossText = typeof logs?.loss === 'number' ? ` — loss ${logs.loss.toFixed(4)}` : '';
+                setTrainingOverlay({
+                    isBusy: true,
+                    progress: percent,
+                    message: `Training neural network (${epoch}/${totalEpochs})${lossText}`,
+                });
+            });
+
+            updateLoadedModel(result.model);
+            setPredictedSentiments(result.predictions);
+            setTrainingStats(result.stats);
+            setModelFeedback('Neural-network training complete. Predictions and weights were saved locally.');
+            setTrainingOverlay({
+                isBusy: true,
+                progress: 100,
+                message: 'Updating predicted sentiments...',
+            });
+        } catch (error) {
+            console.error('Unable to train the sentiment neural network.', error);
+            setModelFeedback(error instanceof Error ? error.message : 'Unable to train the neural network.');
+        } finally {
+            window.setTimeout(() => {
+                setTrainingOverlay({ isBusy: false, progress: 0, message: '' });
+            }, 250);
+        }
+    }, [sentiments, updateLoadedModel]);
+
+    const handleExportWeights = useCallback(async () => {
+        if (!modelRef.current) return;
+
+        setModelFeedback('');
+
+        try {
+            await exportSentimentModel(modelRef.current);
+            setModelFeedback('Exported the current neural-network weights.');
+        } catch (error) {
+            console.error('Unable to export the sentiment model.', error);
+            setModelFeedback('Unable to export the neural-network weights.');
+        }
+    }, []);
+
+    const handleImportWeightsClick = useCallback(() => {
+        importWeightsInputRef.current?.click();
+    }, []);
+
+    const handleImportWeights = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(event.target.files ?? []);
+        event.target.value = '';
+
+        if (files.length === 0) {
+            return;
+        }
+
+        setModelFeedback('');
+        setTrainingOverlay({
+            isBusy: true,
+            progress: 20,
+            message: 'Importing neural-network weights...',
+        });
+
+        try {
+            const result = await importSentimentModel(files, sentiments);
+            updateLoadedModel(result.model);
+            setPredictedSentiments(result.predictions);
+            setTrainingStats(result.stats);
+            setModelFeedback('Imported neural-network weights and refreshed predictions.');
+            setTrainingOverlay({
+                isBusy: true,
+                progress: 100,
+                message: 'Refreshing predicted sentiments...',
+            });
+        } catch (error) {
+            console.error('Unable to import the sentiment model.', error);
+            setModelFeedback(error instanceof Error ? error.message : 'Unable to import the neural-network weights.');
+        } finally {
+            window.setTimeout(() => {
+                setTrainingOverlay({ isBusy: false, progress: 0, message: '' });
+            }, 250);
+        }
+    }, [sentiments, updateLoadedModel]);
 
     // Polychord UI state and computation
     const [showPolychord, setShowPolychord] = useState(false);
@@ -575,6 +762,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                         playChordSimul={playChordSimul}
                                         copyToClipboard={copyToClipboard}
                                         sentiment={sentiments[chord.toString()] ?? null}
+                                        predictedSentiment={hasStoredModel ? (predictedSentiments[chord.toString()] ?? null) : null}
                                         onSentimentChange={updateSentiment}
                                         onAddToSetOp={addToSetOp}
                                         onShowZRelations={showZRelations}
@@ -612,6 +800,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                         playChordSimul={playChordSimul}
                                         copyToClipboard={copyToClipboard}
                                         sentiment={sentiments[chord.toString()] ?? null}
+                                        predictedSentiment={hasStoredModel ? (predictedSentiments[chord.toString()] ?? null) : null}
                                         onSentimentChange={updateSentiment}
                                         onAddToSetOp={addToSetOp}
                                         onShowZRelations={showZRelations}
@@ -651,6 +840,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                         playChordSimul={playChordSimul}
                                         copyToClipboard={copyToClipboard}
                                         sentiment={sentiments[chord.toString()] ?? null}
+                                        predictedSentiment={hasStoredModel ? (predictedSentiments[chord.toString()] ?? null) : null}
                                         onSentimentChange={updateSentiment}
                                         onAddToSetOp={addToSetOp}
                                         onShowZRelations={showZRelations}
@@ -663,14 +853,67 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                     </tr>
                 </tbody>
             </table>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 0' }}>
-                <Button
-                    variant="success"
-                    onClick={exportSentimentsToCsv}
-                >
-                    Export CSV
-                </Button>
+            <div className="sentiment-tools">
+                <div className="sentiment-tool-buttons">
+                    <Button
+                        variant="primary"
+                        onClick={handleTrainNeuralNetwork}
+                        disabled={trainingOverlay.isBusy}
+                    >
+                        Train NN
+                    </Button>
+                    <Button
+                        variant="success"
+                        onClick={exportSentimentsToCsv}
+                    >
+                        Export CSV
+                    </Button>
+                    <Button
+                        variant="outline-info"
+                        onClick={handleExportWeights}
+                        disabled={!hasStoredModel || trainingOverlay.isBusy}
+                    >
+                        Export Weights
+                    </Button>
+                    <Button
+                        variant="outline-info"
+                        onClick={handleImportWeightsClick}
+                        disabled={trainingOverlay.isBusy}
+                    >
+                        Import Weights
+                    </Button>
+                    <input
+                        ref={importWeightsInputRef}
+                        type="file"
+                        accept=".json,.bin,application/json,application/octet-stream"
+                        multiple
+                        onChange={handleImportWeights}
+                        style={{ display: 'none' }}
+                    />
+                </div>
+                <div className="sentiment-tool-stats">
+                    <div><strong>Model:</strong> {hasStoredModel ? 'Loaded' : 'Not loaded'}</div>
+                    <div><strong>Ternary accuracy:</strong> {trainingStats ? `${(trainingStats.ternaryAccuracy * 100).toFixed(1)}%` : '—'}</div>
+                    <div><strong>Labeled accuracy:</strong> {trainingStats?.labeledAccuracy !== null && trainingStats?.labeledAccuracy !== undefined ? `${(trainingStats.labeledAccuracy * 100).toFixed(1)}%` : '—'}</div>
+                    <div><strong>MAE:</strong> {trainingStats ? trainingStats.meanAbsoluteError.toFixed(3) : '—'}</div>
+                    <div><strong>Epochs:</strong> {trainingStats?.epochsCompleted ?? '—'}</div>
+                    <div><strong>Loss:</strong> {trainingStats?.finalLoss !== null && trainingStats?.finalLoss !== undefined ? trainingStats.finalLoss.toFixed(4) : '—'}</div>
+                </div>
             </div>
+            {modelFeedback && (
+                <Alert variant="info" className="sentiment-model-alert">
+                    {modelFeedback}
+                </Alert>
+            )}
+            {trainingOverlay.isBusy && (
+                <div className="training-overlay">
+                    <div className="training-overlay-card">
+                        <Spinner animation="border" role="status" />
+                        <div className="training-overlay-message">{trainingOverlay.message}</div>
+                        <ProgressBar now={trainingOverlay.progress} label={`${trainingOverlay.progress}%`} animated striped />
+                    </div>
+                </div>
+            )}
             {/* Help Modal */}
             <Modal show={showHelpModal} onHide={() => setShowHelpModal(false)} backdrop="static" keyboard={false}>
                 <Modal.Header closeButton>
@@ -697,6 +940,17 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                         Each set popover now includes sentiment buttons: <strong>+1</strong> (like), <strong>0</strong>
                         (neutral), and <strong>-1</strong> (dislike). Use <strong>Export CSV</strong> to download every
                         known pitch class set with its current sentiment and analysis data for later modeling.
+                    </p>
+                    <h6>Neural-network sentiment prediction:</h6>
+                    <p>
+                        Use <strong>Train NN</strong> to train a TensorFlow neural network on all exported numerical
+                        fields. Missing manual sentiments are treated as neutral during training, and the resulting
+                        ternary predictions are saved locally along with the trained weights.
+                    </p>
+                    <p>
+                        Use <strong>Export Weights</strong> and <strong>Import Weights</strong> to move the trained
+                        TensorFlow model between devices. Once weights are available, each pitch-class-set popover also
+                        shows its <strong>Predicted sentiment</strong>.
                     </p>
                     <h6>Supersets and Subsets:</h6>
                     <p>

@@ -5,6 +5,35 @@ export type SentimentValue = -1 | 0 | 1 | null;
 export type SentimentMap = Record<string, SentimentValue>;
 
 export const PCS_SENTIMENT_STORAGE_KEY = 'kcomplex-pcs-sentiments';
+export const SYMMETRY_VALUES = Array.from({ length: 24 }, (_, i) => i * 0.5);
+export const PITCH_CLASS_SET_NUMERICAL_FEATURE_HEADERS = [
+    'forte_num_notes',
+    'forte_has_z',
+    'forte_order',
+    'forte_ab',
+    'forte_transposition',
+    'pc0',
+    'pc1',
+    'pc2',
+    'pc3',
+    'pc4',
+    'pc5',
+    'pc6',
+    'pc7',
+    'pc8',
+    'pc9',
+    'pc10',
+    'pc11',
+    'iv1',
+    'iv2',
+    'iv3',
+    'iv4',
+    'iv5',
+    'iv6',
+    'interval_vector_entropy',
+    'interval_vector_entropy_level',
+    ...SYMMETRY_VALUES.map(v => `sym_${v}`),
+] as const;
 
 const PITCH_CLASS_COUNT = 12;
 
@@ -69,8 +98,30 @@ function escapeCsvValue(value: string | number | boolean): string {
     if (!/[",\n]/.test(text)) return text;
     return `"${text.replace(/"/g, '""')}"`;
 }
+export function getPitchClassSetNumericalFeatures(chord: PCS12): number[] {
+    const forte = chord.toString();
+    const forteParts = parseForteNumber(forte);
+    const { entropy, level } = getIntervalVectorEntropyMetrics(chord);
+    const iv = chord.getIntervalVector() ?? [];
 
-const SYMMETRY_VALUES = Array.from({ length: 24 }, (_, i) => i * 0.5);
+    return [
+        forteParts.numNotes,
+        forteParts.hasZ,
+        forteParts.order,
+        forteParts.ab,
+        forteParts.transposition,
+        ...getPitchClassFlags(chord).map(value => Number(value)),
+        iv[0] ?? 0,
+        iv[1] ?? 0,
+        iv[2] ?? 0,
+        iv[3] ?? 0,
+        iv[4] ?? 0,
+        iv[5] ?? 0,
+        Number(entropy.toFixed(3)),
+        level === 'Low' ? 1 : level === 'Mid' ? 0 : -1,
+        ...SYMMETRY_VALUES.map(v => chord.getSymmetries().includes(v) ? 1 : 0),
+    ];
+}
 
 export function buildPitchClassSetSentimentCsv(sentiments: SentimentMap): string {
     const rows = [
@@ -113,27 +164,13 @@ export function buildPitchClassSetSentimentCsv(sentiments: SentimentMap): string
     for (const chord of chords) {
         const forte = chord.toString();
         const sentiment = sentiments[forte] ?? null;
-        const { entropy, level } = getIntervalVectorEntropyMetrics(chord);
-        const iv = chord.getIntervalVector() ?? [];
+        const numericalFeatures = getPitchClassSetNumericalFeatures(chord);
 
         rows.push([
             forte,
-            String(parseForteNumber(forte).numNotes),
-            String(parseForteNumber(forte).hasZ),
-            String(parseForteNumber(forte).order),
-            String(parseForteNumber(forte).ab),
-            String(parseForteNumber(forte).transposition),
+            ...numericalFeatures.slice(0, 5).map(String),
             chord.getCommonName() || 'None',
-            ...getPitchClassFlags(chord),
-            String(iv[0] ?? ''),
-            String(iv[1] ?? ''),
-            String(iv[2] ?? ''),
-            String(iv[3] ?? ''),
-            String(iv[4] ?? ''),
-            String(iv[5] ?? ''),
-            entropy.toFixed(3),
-            level === 'Low' ? '1' : level === 'Mid' ? '0' : '-1',
-            ...SYMMETRY_VALUES.map(v => chord.getSymmetries().includes(v) ? '1' : '0'),
+            ...numericalFeatures.slice(5).map(String),
             sentiment !== null ? String(sentiment) : '',
         ]);
     }
