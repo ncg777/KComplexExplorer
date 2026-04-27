@@ -83,7 +83,6 @@ function buildTrainingDataset(dataset: DatasetBundle): TrainingDatasetBundle {
 }
 
 function createSentimentModel(inputSize: number): tf.LayersModel {
-    const regularizer = tf.regularizers.l2({ l2: 0.0001 });
     const hiddenUnits = Math.max(8, inputSize * 4);
     const model = tf.sequential({
         layers: [
@@ -91,15 +90,11 @@ function createSentimentModel(inputSize: number): tf.LayersModel {
                 inputShape: [inputSize],
                 units: hiddenUnits,
                 activation: 'relu',
-                kernelRegularizer: regularizer,
             }),
-            tf.layers.dropout({ rate: 0.1 }),
             tf.layers.dense({
                 units: hiddenUnits,
                 activation: 'relu',
-                kernelRegularizer: regularizer,
             }),
-            tf.layers.dropout({ rate: 0.1 }),
             tf.layers.dense({
                 units: 1,
                 activation: 'tanh',
@@ -108,7 +103,7 @@ function createSentimentModel(inputSize: number): tf.LayersModel {
     });
 
     model.compile({
-        optimizer: tf.train.adam(0.00001),
+        optimizer: tf.train.adam(0.001),
         loss: tf.losses.huberLoss,
         metrics: ['mae'],
     });
@@ -290,7 +285,7 @@ export async function loadStoredSentimentModel(): Promise<tf.LayersModel | null>
 
         const model = await tf.loadLayersModel(PCS_SENTIMENT_MODEL_STORAGE_URL);
         model.compile({
-            optimizer: tf.train.adam(0.00001),
+            optimizer: tf.train.adam(0.001),
             loss: tf.losses.huberLoss,
             metrics: ['mae'],
         });
@@ -334,7 +329,7 @@ export async function importSentimentModel(files: File[], sentiments: SentimentM
 
     const model = await tf.loadLayersModel(tf.io.browserFiles([jsonFile, ...weightFiles]));
     model.compile({
-        optimizer: tf.train.adam(0.00001),
+        optimizer: tf.train.adam(0.001),
         loss: tf.losses.huberLoss,
         metrics: ['mae'],
     });
@@ -362,11 +357,11 @@ export async function trainSentimentModel(
         throw new Error('Label at least one pitch-class set before training the neural network.');
     }
 
-    const totalEpochs = 500;
+    const totalEpochs = 2000;
     const batchSize = trainingDataset.targets.length < 8
         ? trainingDataset.targets.length
         : Math.min(32, Math.max(8, Math.floor(trainingDataset.targets.length / 6)));
-    const validationSplit = trainingDataset.targets.length >= 10 ? 0.2 : 0;
+    const validationSplit = 0;
     const model = createSentimentModel(trainingDataset.normalizedFeatures[0]?.length ?? 1);
     const inputTensor = tf.tensor2d(trainingDataset.normalizedFeatures);
     const targetTensor = tf.tensor2d(trainingDataset.targets, [trainingDataset.targets.length, 1]);
@@ -379,8 +374,8 @@ export async function trainSentimentModel(
             validationSplit,
             callbacks: [
                 tf.callbacks.earlyStopping({
-                    monitor: validationSplit > 0 ? 'val_loss' : 'loss',
-                    patience: validationSplit > 0 ? 200 : 75,
+                    monitor: 'loss',
+                    patience: 150,
                 }),
                 new tf.CustomCallback({
                     onEpochEnd: async (epoch, logs) => {
