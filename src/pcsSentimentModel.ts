@@ -128,7 +128,13 @@ function buildStats(
         .map((value, index) => ({ value, index }))
         .filter((entry): entry is { value: PredictedSentimentValue; index: number } => entry.value !== null);
     const labeledMatches = labeledIndexes.filter(({ value, index }) => predictedValues[index] === value).length;
-    const absoluteError = labeledIndexes.reduce((sum, { value, index }) => sum + Math.abs((rawOutputs[index] ?? 0) - value), 0);
+    const absoluteError = labeledIndexes.reduce((sum, { value, index }) => {
+        const rawOutput = rawOutputs[index];
+        if (rawOutput === undefined) {
+            throw new Error(`Missing model output for labeled sentiment at index ${index}.`);
+        }
+        return sum + Math.abs(rawOutput - value);
+    }, 0);
 
     return {
         epochsCompleted,
@@ -357,11 +363,9 @@ export async function trainSentimentModel(
     }
 
     const totalEpochs = 500;
-    const batchSize = Math.min(
-        32,
-        Math.max(1, trainingDataset.targets.length),
-        Math.max(8, Math.floor(trainingDataset.targets.length / 6)),
-    );
+    const batchSize = trainingDataset.targets.length < 8
+        ? trainingDataset.targets.length
+        : Math.min(32, Math.max(8, Math.floor(trainingDataset.targets.length / 6)));
     const validationSplit = trainingDataset.targets.length >= 10 ? 0.2 : 0;
     const model = createSentimentModel(trainingDataset.normalizedFeatures[0]?.length ?? 1);
     const inputTensor = tf.tensor2d(trainingDataset.normalizedFeatures);
