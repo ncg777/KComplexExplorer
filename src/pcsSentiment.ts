@@ -94,7 +94,6 @@ export function buildPitchClassSetSentimentCsv(sentiments: SentimentMap): string
             'pc9',
             'pc10',
             'pc11',
-            'intervals',
             'iv1',
             'iv2',
             'iv3',
@@ -104,7 +103,6 @@ export function buildPitchClassSetSentimentCsv(sentiments: SentimentMap): string
             'interval_vector_entropy',
             'interval_vector_entropy_level',
             ...SYMMETRY_VALUES.map(v => `sym_${v}`),
-            'tension_partition',
             'sentiment',
         ],
     ];
@@ -127,7 +125,6 @@ export function buildPitchClassSetSentimentCsv(sentiments: SentimentMap): string
             String(parseForteNumber(forte).transposition),
             chord.getCommonName() || 'None',
             ...getPitchClassFlags(chord),
-            chord.getIntervals().map(value => String(value)).join(' '),
             String(iv[0] ?? ''),
             String(iv[1] ?? ''),
             String(iv[2] ?? ''),
@@ -135,9 +132,8 @@ export function buildPitchClassSetSentimentCsv(sentiments: SentimentMap): string
             String(iv[4] ?? ''),
             String(iv[5] ?? ''),
             entropy.toFixed(3),
-            level,
+            level === 'Low' ? '1' : level === 'Mid' ? '0' : '-1',
             ...SYMMETRY_VALUES.map(v => chord.getSymmetries().includes(v) ? '1' : '0'),
-            chord.getTensionPartition().map(value => String(value)).join(' ') || 'None',
             sentiment !== null ? String(sentiment) : '',
         ]);
     }
