@@ -10,6 +10,7 @@ export interface RandomPitchClassMatrixSearchOptions {
     upperBound: PCS12;
     rows: number;
     columns: number;
+    noteCount: number;
     predictions: SentimentPredictionMap;
     shouldCancel?: () => boolean;
     onProgress?: (progress: RandomPitchClassMatrixProgress) => void;
@@ -51,10 +52,11 @@ function createChordFromMask(mask: number): PCS12 {
     return PCS12.identify(PCS12.createWithSizeAndSet(12, set));
 }
 
-function getPositiveCandidates(upperBound: PCS12, predictions: SentimentPredictionMap): PCS12[] {
+function getPositiveCandidates(upperBound: PCS12, noteCount: number, predictions: SentimentPredictionMap): PCS12[] {
     const subsetOfUpperBound = new SubsetOf(upperBound);
     return Array.from(PCS12.getChords())
         .filter(chord => subsetOfUpperBound.apply(chord))
+        .filter(chord => chord.getK() === noteCount)
         .filter(chord => predictions[chord.toString()] === 1)
         .sort((a, b) => PCS12.ForteStringComparator(a.toString(), b.toString()));
 }
@@ -63,6 +65,7 @@ export async function generateRandomPitchClassMatrix({
     upperBound,
     rows,
     columns,
+    noteCount,
     predictions,
     shouldCancel,
     onProgress,
@@ -71,7 +74,11 @@ export async function generateRandomPitchClassMatrix({
         throw new Error('Matrix dimensions must be positive integers.');
     }
 
-    const candidates = getPositiveCandidates(upperBound, predictions);
+    if (!Number.isInteger(noteCount) || noteCount < 1 || noteCount > 12) {
+        throw new Error('Note count must be an integer between 1 and 12.');
+    }
+
+    const candidates = getPositiveCandidates(upperBound, noteCount, predictions);
     if (candidates.length === 0) {
         throw new Error('No positively predicted pitch class sets are available within the selected upper bound.');
     }
