@@ -70,8 +70,8 @@ function buildDataset(sentiments: SentimentMap): DatasetBundle {
 }
 
 function createSentimentModel(inputSize: number): tf.LayersModel {
-    const regularizer = tf.regularizers.l2({ l2: 0.001 });
-    const hiddenUnits = Math.max(8, inputSize * 2);
+    const regularizer = tf.regularizers.l2({ l2: 0.0001 });
+    const hiddenUnits = Math.max(8, inputSize * 4);
     const model = tf.sequential({
         layers: [
             tf.layers.dense({
@@ -80,13 +80,13 @@ function createSentimentModel(inputSize: number): tf.LayersModel {
                 activation: 'relu',
                 kernelRegularizer: regularizer,
             }),
-            tf.layers.dropout({ rate: 0.35 }),
+            tf.layers.dropout({ rate: 0.1 }),
             tf.layers.dense({
                 units: hiddenUnits,
                 activation: 'relu',
                 kernelRegularizer: regularizer,
             }),
-            tf.layers.dropout({ rate: 0.35 }),
+            tf.layers.dropout({ rate: 0.1 }),
             tf.layers.dense({
                 units: 1,
                 activation: 'tanh',
@@ -95,7 +95,7 @@ function createSentimentModel(inputSize: number): tf.LayersModel {
     });
 
     model.compile({
-        optimizer: tf.train.adam(0.003),
+        optimizer: tf.train.adam(0.0005),
         loss: tf.losses.huberLoss,
         metrics: ['mae'],
     });
@@ -318,7 +318,7 @@ export async function trainSentimentModel(
     await tf.ready();
 
     const dataset = buildDataset(sentiments);
-    const totalEpochs = 250;
+    const totalEpochs = 500;
     const batchSize = Math.min(32, Math.max(8, Math.floor(dataset.targets.length / 6)));
     const model = createSentimentModel(dataset.normalizedFeatures[0]?.length ?? 1);
     const inputTensor = tf.tensor2d(dataset.normalizedFeatures);
@@ -333,7 +333,7 @@ export async function trainSentimentModel(
             callbacks: [
                 tf.callbacks.earlyStopping({
                     monitor: 'val_loss',
-                    patience: 20,
+                    patience: 50,
                     restoreBestWeight: true,
                 }),
                 new tf.CustomCallback({
