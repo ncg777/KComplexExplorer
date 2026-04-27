@@ -18,6 +18,10 @@ import {
     SentimentTrainingStats,
     trainSentimentModel,
 } from './pcsSentimentModel';
+import {
+    generateRandomPitchClassMatrix,
+    RandomPitchClassMatrixSearchCancelledError,
+} from './randomPitchClassMatrix';
 import './KComplexExplorer.css';
 import * as Tone from 'tone';
 import { useSynth } from './SynthContext'; // Import the useSynth hook
@@ -28,6 +32,12 @@ interface KComplexExplorerProps {
 
 interface TrainingOverlayState {
     isBusy: boolean;
+    progress: number;
+    message: string;
+}
+
+interface MatrixSearchState {
+    isSearching: boolean;
     progress: number;
     message: string;
 }
@@ -67,9 +77,14 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const [hasStoredModel, setHasStoredModel] = useState(false);
     const [trainingOverlay, setTrainingOverlay] = useState<TrainingOverlayState>({ isBusy: false, progress: 0, message: '' });
     const [modelFeedback, setModelFeedback] = useState<string>('');
+    const [matrixSearchState, setMatrixSearchState] = useState<MatrixSearchState>({ isSearching: false, progress: 0, message: '' });
+    const [matrixRowCount, setMatrixRowCount] = useState(3);
+    const [matrixColumnCount, setMatrixColumnCount] = useState(4);
+    const [matrixOutput, setMatrixOutput] = useState('');
     const modelRef = useRef<tf.LayersModel | null>(null);
     const trainingStatsRef = useRef<SentimentTrainingStats | null>(trainingStats);
     const importWeightsInputRef = useRef<HTMLInputElement>(null);
+    const cancelMatrixSearchRef = useRef(false);
 
     // Create refs for your lists
     const pcsListRef = useRef<HTMLDivElement>(null);
@@ -386,6 +401,10 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         await navigator.clipboard.writeText(text);
     },[]);
 
+    const formatPitchClassMatrix = useCallback((matrix: PCS12[][]) =>
+        matrix.map(row => row.map(chord => chord.toString()).join('\t')).join('\n')
+    , []);
+
     const updateSentiment = useCallback((chord: PCS12, sentiment: SentimentValue) => {
         setSentiments(prev => ({
             ...prev,
@@ -500,6 +519,65 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         }
     }, [sentiments, updateLoadedModel]);
 
+    const handleCancelMatrixSearch = useCallback(() => {
+        cancelMatrixSearchRef.current = true;
+        setMatrixSearchState(prev => ({
+            ...prev,
+            message: 'Cancelling matrix search...',
+        }));
+    }, []);
+
+    const handleGenerateRandomMatrix = useCallback(async () => {
+        const upperBound = PCS12.parseForte(selectedScale);
+        if (!upperBound) {
+            setModelFeedback('Unable to read the selected upper bound.');
+            return;
+        }
+
+        cancelMatrixSearchRef.current = false;
+        setMatrixOutput('');
+        setModelFeedback('');
+        setMatrixSearchState({
+            isSearching: true,
+            progress: 0,
+            message: 'Preparing random matrix search...',
+        });
+
+        try {
+            const result = await generateRandomPitchClassMatrix({
+                upperBound,
+                rows: matrixRowCount,
+                columns: matrixColumnCount,
+                predictions: predictedSentiments,
+                shouldCancel: () => cancelMatrixSearchRef.current,
+                onProgress: progress => setMatrixSearchState({
+                    isSearching: true,
+                    progress: progress.progress,
+                    message: progress.message,
+                }),
+            });
+
+            setMatrixOutput(formatPitchClassMatrix(result.matrix));
+            setModelFeedback(`Generated a ${matrixRowCount}×${matrixColumnCount} matrix from ${result.candidateCount} positively predicted candidates.`);
+            setMatrixSearchState({
+                isSearching: true,
+                progress: 100,
+                message: 'Matrix found.',
+            });
+        } catch (error) {
+            if (error instanceof RandomPitchClassMatrixSearchCancelledError) {
+                setModelFeedback('Random matrix search cancelled.');
+            } else {
+                console.error('Unable to generate a random pitch-class matrix.', error);
+                setModelFeedback(error instanceof Error ? error.message : 'Unable to generate a random matrix.');
+            }
+        } finally {
+            window.setTimeout(() => {
+                setMatrixSearchState({ isSearching: false, progress: 0, message: '' });
+            }, 250);
+        }
+    }, [formatPitchClassMatrix, matrixColumnCount, matrixRowCount, predictedSentiments, selectedScale]);
+
     // Polychord UI state and computation
     const [showPolychord, setShowPolychord] = useState(false);
     const [polychordText, setPolychordText] = useState('');
@@ -566,6 +644,13 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         chords.sort((a, b) => a.rotatedCompareTo(b, chordSorterRotate));
         setChordSorterResult(chords.map(c => c.toString()).join(' '));
     }, [chordSorterText, chordSorterRotate]);
+
+    const isBusy = trainingOverlay.isBusy || matrixSearchState.isSearching;
+    const activeOverlay = trainingOverlay.isBusy
+        ? { progress: trainingOverlay.progress, message: trainingOverlay.message, canCancel: false }
+        : matrixSearchState.isSearching
+            ? { progress: matrixSearchState.progress, message: matrixSearchState.message, canCancel: true }
+            : null;
 
     return (
         <div className="KComplexExplorer">
@@ -858,7 +943,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                     <Button
                         variant="primary"
                         onClick={handleTrainNeuralNetwork}
-                        disabled={trainingOverlay.isBusy}
+                        disabled={isBusy}
                     >
                         Train NN
                     </Button>
@@ -871,14 +956,14 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                     <Button
                         variant="outline-info"
                         onClick={handleExportWeights}
-                        disabled={!hasStoredModel || trainingOverlay.isBusy}
+                        disabled={!hasStoredModel || isBusy}
                     >
                         Export Weights
                     </Button>
                     <Button
                         variant="outline-info"
                         onClick={handleImportWeightsClick}
-                        disabled={trainingOverlay.isBusy}
+                        disabled={isBusy}
                     >
                         Import Weights
                     </Button>
@@ -900,17 +985,78 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                     <div><strong>Loss:</strong> {trainingStats?.finalLoss !== null && trainingStats?.finalLoss !== undefined ? trainingStats.finalLoss.toFixed(4) : '—'}</div>
                 </div>
             </div>
+            {hasStoredModel && (
+                <div className="random-matrix-panel">
+                    <div className="random-matrix-header">
+                        <strong>Positive random matrix</strong>
+                        <span className="random-matrix-subtitle">Uses the selected upper bound and positive neural-network predictions.</span>
+                    </div>
+                    <div className="random-matrix-controls">
+                        <Form.Group controlId="matrixRows" className="random-matrix-field">
+                            <Form.Label>Rows</Form.Label>
+                            <Form.Control
+                                type="number"
+                                min={1}
+                                step={1}
+                                value={matrixRowCount}
+                                onChange={(e) => setMatrixRowCount(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                                disabled={isBusy}
+                            />
+                        </Form.Group>
+                        <Form.Group controlId="matrixColumns" className="random-matrix-field">
+                            <Form.Label>Columns</Form.Label>
+                            <Form.Control
+                                type="number"
+                                min={1}
+                                step={1}
+                                value={matrixColumnCount}
+                                onChange={(e) => setMatrixColumnCount(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                                disabled={isBusy}
+                            />
+                        </Form.Group>
+                        <div className="random-matrix-actions">
+                            <Button
+                                variant="warning"
+                                onClick={handleGenerateRandomMatrix}
+                                disabled={isBusy}
+                            >
+                                Generate Random Matrix
+                            </Button>
+                            <Button
+                                variant="outline-secondary"
+                                onClick={() => setMatrixOutput('')}
+                                disabled={isBusy || !matrixOutput}
+                            >
+                                Clear
+                            </Button>
+                        </div>
+                    </div>
+                    <Form.Control
+                        as="textarea"
+                        rows={6}
+                        readOnly
+                        value={matrixOutput}
+                        placeholder="Generated matrix will appear here."
+                        className="random-matrix-output"
+                    />
+                </div>
+            )}
             {modelFeedback && (
                 <Alert variant="info" className="sentiment-model-alert">
                     {modelFeedback}
                 </Alert>
             )}
-            {trainingOverlay.isBusy && (
+            {activeOverlay && (
                 <div className="training-overlay">
                     <div className="training-overlay-card">
                         <Spinner animation="border" role="status" />
-                        <div className="training-overlay-message">{trainingOverlay.message}</div>
-                        <ProgressBar now={trainingOverlay.progress} label={`${trainingOverlay.progress}%`} animated striped />
+                        <div className="training-overlay-message">{activeOverlay.message}</div>
+                        <ProgressBar now={activeOverlay.progress} label={`${activeOverlay.progress}%`} animated striped />
+                        {activeOverlay.canCancel && (
+                            <Button variant="outline-light" onClick={handleCancelMatrixSearch}>
+                                Cancel
+                            </Button>
+                        )}
                     </div>
                 </div>
             )}
@@ -951,6 +1097,11 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                         Use <strong>Export Weights</strong> and <strong>Import Weights</strong> to move the trained
                         TensorFlow model between devices. Once weights are available, each pitch-class-set popover also
                         shows its <strong>Predicted sentiment</strong>.
+                    </p>
+                    <p>
+                        Once a model is loaded, the <strong>Positive random matrix</strong> tool can search for a matrix
+                        whose cells, horizontal neighbours (including wrap-around), and full column unions all keep a
+                        positive predicted sentiment within the selected upper bound.
                     </p>
                     <h6>Supersets and Subsets:</h6>
                     <p>
