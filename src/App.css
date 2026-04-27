@@ -23,14 +23,20 @@ body {
   text-align: center;
   max-width: 800px; /* Set the maximum width of the app */
   margin: 0 auto; /* Center the app */
-  padding: 20px; /* Add some padding */
+  padding: 12px 20px 20px; /* Add some padding */
 }
 
 .App-header {
   background-color: #282c34; /* Keep header background dark */
   color: white; /* Keep header text color white */
-  padding: 20px;
+  padding: 10px 16px;
   border-radius: 10px;
+}
+
+.App-header h1 {
+  margin: 0;
+  font-size: 1.9rem;
+  line-height: 1.2;
 }
 
 .App-link {
@@ -38,7 +44,7 @@ body {
 }
 
 main {
-  margin-top: 20px;
+  margin-top: 12px;
 }
 
 @keyframes App-logo-spin {
