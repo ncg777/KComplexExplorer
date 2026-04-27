@@ -108,7 +108,7 @@ function createSentimentModel(inputSize: number): tf.LayersModel {
     });
 
     model.compile({
-        optimizer: tf.train.adam(0.0001),
+        optimizer: tf.train.adam(0.00005),
         loss: tf.losses.huberLoss,
         metrics: ['mae'],
     });
@@ -290,7 +290,7 @@ export async function loadStoredSentimentModel(): Promise<tf.LayersModel | null>
 
         const model = await tf.loadLayersModel(PCS_SENTIMENT_MODEL_STORAGE_URL);
         model.compile({
-            optimizer: tf.train.adam(0.0001),
+            optimizer: tf.train.adam(0.00005),
             loss: tf.losses.huberLoss,
             metrics: ['mae'],
         });
@@ -334,7 +334,7 @@ export async function importSentimentModel(files: File[], sentiments: SentimentM
 
     const model = await tf.loadLayersModel(tf.io.browserFiles([jsonFile, ...weightFiles]));
     model.compile({
-        optimizer: tf.train.adam(0.0001),
+        optimizer: tf.train.adam(0.00005),
         loss: tf.losses.huberLoss,
         metrics: ['mae'],
     });
@@ -380,8 +380,8 @@ export async function trainSentimentModel(
             callbacks: [
                 tf.callbacks.earlyStopping({
                     monitor: validationSplit > 0 ? 'val_loss' : 'loss',
-                    patience: validationSplit > 0 ? 75 : 20,
-                    restoreBestWeight: true,
+                    patience: validationSplit > 0 ? 150 : 50,
+                    restoreBestWeights: true,
                 }),
                 new tf.CustomCallback({
                     onEpochEnd: async (epoch, logs) => {
