@@ -357,8 +357,12 @@ export async function trainSentimentModel(
     }
 
     const totalEpochs = 500;
-    const batchSize = Math.min(32, Math.max(1, Math.floor(trainingDataset.targets.length / 6)));
-    const validationSplit = trainingDataset.targets.length >= 5 ? 0.2 : 0;
+    const batchSize = Math.min(
+        32,
+        Math.max(1, trainingDataset.targets.length),
+        Math.max(8, Math.floor(trainingDataset.targets.length / 6)),
+    );
+    const validationSplit = trainingDataset.targets.length >= 10 ? 0.2 : 0;
     const model = createSentimentModel(trainingDataset.normalizedFeatures[0]?.length ?? 1);
     const inputTensor = tf.tensor2d(trainingDataset.normalizedFeatures);
     const targetTensor = tf.tensor2d(trainingDataset.targets, [trainingDataset.targets.length, 1]);
@@ -372,7 +376,7 @@ export async function trainSentimentModel(
             callbacks: [
                 tf.callbacks.earlyStopping({
                     monitor: validationSplit > 0 ? 'val_loss' : 'loss',
-                    patience: validationSplit > 0 ? 50 : 25,
+                    patience: validationSplit > 0 ? 50 : 12,
                     restoreBestWeight: true,
                 }),
                 new tf.CustomCallback({
