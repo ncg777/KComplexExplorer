@@ -9,9 +9,8 @@ export interface SentimentTrainingStats {
     epochsCompleted: number;
     sampleCount: number;
     labeledSampleCount: number;
-    meanAbsoluteError: number;
-    ternaryAccuracy: number;
-    labeledAccuracy: number | null;
+    meanAbsoluteError: number | null;
+    accuracy: number | null;
     finalLoss: number | null;
     finalValidationLoss: number | null;
     updatedAt: string;
@@ -20,8 +19,12 @@ export interface SentimentTrainingStats {
 interface DatasetBundle {
     chords: PCS12[];
     normalizedFeatures: number[][];
-    targets: PredictedSentimentValue[];
     labeledTargets: SentimentValue[];
+}
+
+interface TrainingDatasetBundle {
+    normalizedFeatures: number[][];
+    targets: PredictedSentimentValue[];
 }
 
 export const PCS_SENTIMENT_MODEL_STORAGE_URL = 'localstorage://kcomplex-pcs-sentiment-model';
@@ -33,9 +36,9 @@ function getSortedChords(): PCS12[] {
         .sort((a, b) => PCS12.ForteStringComparator(a.toString(), b.toString()));
 }
 
-function toNearestTrit(value: number): PredictedSentimentValue {
-    if (value >= 0.5) return 1;
-    if (value <= -0.5) return -1;
+function defuzzifySentimentScore(value: number): PredictedSentimentValue {
+    if (value >= 1 / 3) return 1;
+    if (value <= -1 / 3) return -1;
     return 0;
 }
 
@@ -64,8 +67,18 @@ function buildDataset(sentiments: SentimentMap): DatasetBundle {
     return {
         chords,
         normalizedFeatures: normalizeFeatureMatrix(featureMatrix),
-        targets: chords.map(chord => toNearestTrit(sentiments[chord.toString()] ?? 0)),
         labeledTargets: chords.map(chord => sentiments[chord.toString()] ?? null),
+    };
+}
+
+function buildTrainingDataset(dataset: DatasetBundle): TrainingDatasetBundle {
+    const labeledRows = dataset.labeledTargets
+        .map((value, index) => ({ value, index }))
+        .filter((entry): entry is { value: PredictedSentimentValue; index: number } => entry.value !== null);
+
+    return {
+        normalizedFeatures: labeledRows.map(({ index }) => dataset.normalizedFeatures[index]),
+        targets: labeledRows.map(({ value }) => value),
     };
 }
 
@@ -104,29 +117,25 @@ function createSentimentModel(inputSize: number): tf.LayersModel {
 }
 
 function buildStats(
-    predictions: SentimentPredictionMap,
+    predictedValues: PredictedSentimentValue[],
     rawOutputs: number[],
-    targets: PredictedSentimentValue[],
     labeledTargets: SentimentValue[],
     epochsCompleted: number,
     finalLoss: number | null,
     finalValidationLoss: number | null,
 ): SentimentTrainingStats {
-    const predictedValues = Object.values(predictions);
-    const ternaryMatches = predictedValues.filter((value, index) => value === targets[index]).length;
     const labeledIndexes = labeledTargets
         .map((value, index) => ({ value, index }))
         .filter((entry): entry is { value: PredictedSentimentValue; index: number } => entry.value !== null);
     const labeledMatches = labeledIndexes.filter(({ value, index }) => predictedValues[index] === value).length;
-    const absoluteError = rawOutputs.reduce((sum, value, index) => sum + Math.abs(value - targets[index]), 0);
+    const absoluteError = labeledIndexes.reduce((sum, { value, index }) => sum + Math.abs((rawOutputs[index] ?? 0) - value), 0);
 
     return {
         epochsCompleted,
-        sampleCount: targets.length,
+        sampleCount: rawOutputs.length,
         labeledSampleCount: labeledIndexes.length,
-        meanAbsoluteError: absoluteError / Math.max(rawOutputs.length, 1),
-        ternaryAccuracy: ternaryMatches / Math.max(targets.length, 1),
-        labeledAccuracy: labeledIndexes.length > 0 ? labeledMatches / labeledIndexes.length : null,
+        meanAbsoluteError: labeledIndexes.length > 0 ? absoluteError / labeledIndexes.length : null,
+        accuracy: labeledIndexes.length > 0 ? labeledMatches / labeledIndexes.length : null,
         finalLoss,
         finalValidationLoss,
         updatedAt: new Date().toISOString(),
@@ -156,16 +165,16 @@ async function evaluateModel(
 ): Promise<{ predictions: SentimentPredictionMap; stats: SentimentTrainingStats }> {
     const dataset = buildDataset(sentiments);
     const rawOutputs = await runPrediction(model, dataset.normalizedFeatures);
+    const predictedValues = rawOutputs.map(value => defuzzifySentimentScore(value));
     const predictions = Object.fromEntries(
-        dataset.chords.map((chord, index) => [chord.toString(), toNearestTrit(rawOutputs[index] ?? 0)])
+        dataset.chords.map((chord, index) => [chord.toString(), predictedValues[index] ?? 0])
     ) as SentimentPredictionMap;
 
     return {
         predictions,
         stats: buildStats(
-            predictions,
+            predictedValues,
             rawOutputs,
-            dataset.targets,
             dataset.labeledTargets,
             trainingSummary?.epochsCompleted ?? 0,
             trainingSummary?.finalLoss ?? null,
@@ -179,6 +188,30 @@ function readLastMetric(history: tf.History['history'], key: string): number | n
     if (!values || values.length === 0) return null;
     const last = values[values.length - 1];
     return typeof last === 'number' ? last : Number(last);
+}
+
+function readFiniteNumber(value: unknown): number | null {
+    return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function normalizeStoredTrainingStats(value: unknown): SentimentTrainingStats | null {
+    if (!value || typeof value !== 'object') return null;
+
+    const raw = value as Record<string, unknown>;
+    const accuracy = readFiniteNumber(raw.accuracy)
+        ?? readFiniteNumber(raw.labeledAccuracy)
+        ?? readFiniteNumber(raw.ternaryAccuracy);
+
+    return {
+        epochsCompleted: readFiniteNumber(raw.epochsCompleted) ?? 0,
+        sampleCount: readFiniteNumber(raw.sampleCount) ?? 0,
+        labeledSampleCount: readFiniteNumber(raw.labeledSampleCount) ?? 0,
+        meanAbsoluteError: readFiniteNumber(raw.meanAbsoluteError),
+        accuracy,
+        finalLoss: readFiniteNumber(raw.finalLoss),
+        finalValidationLoss: readFiniteNumber(raw.finalValidationLoss),
+        updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString(),
+    };
 }
 
 export function loadStoredSentimentPredictions(): SentimentPredictionMap {
@@ -208,7 +241,7 @@ export function loadStoredSentimentTrainingStats(): SentimentTrainingStats | nul
     try {
         const raw = window.localStorage.getItem(PCS_SENTIMENT_TRAINING_STATS_STORAGE_KEY);
         if (!raw) return null;
-        return JSON.parse(raw) as SentimentTrainingStats;
+        return normalizeStoredTrainingStats(JSON.parse(raw));
     } catch (error) {
         console.error('Unable to load stored training stats.', error);
         return null;
@@ -318,22 +351,28 @@ export async function trainSentimentModel(
     await tf.ready();
 
     const dataset = buildDataset(sentiments);
+    const trainingDataset = buildTrainingDataset(dataset);
+    if (trainingDataset.targets.length === 0) {
+        throw new Error('Label at least one pitch-class set before training the neural network.');
+    }
+
     const totalEpochs = 500;
-    const batchSize = Math.min(32, Math.max(8, Math.floor(dataset.targets.length / 6)));
-    const model = createSentimentModel(dataset.normalizedFeatures[0]?.length ?? 1);
-    const inputTensor = tf.tensor2d(dataset.normalizedFeatures);
-    const targetTensor = tf.tensor2d(dataset.targets, [dataset.targets.length, 1]);
+    const batchSize = Math.min(32, Math.max(1, Math.floor(trainingDataset.targets.length / 6)));
+    const validationSplit = trainingDataset.targets.length >= 5 ? 0.2 : 0;
+    const model = createSentimentModel(trainingDataset.normalizedFeatures[0]?.length ?? 1);
+    const inputTensor = tf.tensor2d(trainingDataset.normalizedFeatures);
+    const targetTensor = tf.tensor2d(trainingDataset.targets, [trainingDataset.targets.length, 1]);
 
     try {
         const history = await model.fit(inputTensor, targetTensor, {
             batchSize,
             epochs: totalEpochs,
             shuffle: true,
-            validationSplit: 0.2,
+            validationSplit,
             callbacks: [
                 tf.callbacks.earlyStopping({
-                    monitor: 'val_loss',
-                    patience: 50,
+                    monitor: validationSplit > 0 ? 'val_loss' : 'loss',
+                    patience: validationSplit > 0 ? 50 : 25,
                     restoreBestWeight: true,
                 }),
                 new tf.CustomCallback({
