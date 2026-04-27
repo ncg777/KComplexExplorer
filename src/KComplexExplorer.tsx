@@ -80,6 +80,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const [matrixSearchState, setMatrixSearchState] = useState<MatrixSearchState>({ isSearching: false, progress: 0, message: '' });
     const [matrixRowCount, setMatrixRowCount] = useState(3);
     const [matrixColumnCount, setMatrixColumnCount] = useState(4);
+    const [matrixNoteCount, setMatrixNoteCount] = useState(3);
     const [matrixOutput, setMatrixOutput] = useState('');
     const modelRef = useRef<tf.LayersModel | null>(null);
     const trainingStatsRef = useRef<SentimentTrainingStats | null>(trainingStats);
@@ -402,7 +403,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     },[]);
 
     const formatPitchClassMatrix = useCallback((matrix: PCS12[][]) =>
-        matrix.map(row => row.map(chord => chord.toString()).join('\t')).join('\n')
+        matrix.map(row => row.map(chord => chord.toString()).join(' ')).join('\n')
     , []);
 
     const updateSentiment = useCallback((chord: PCS12, sentiment: SentimentValue) => {
@@ -548,6 +549,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                 upperBound,
                 rows: matrixRowCount,
                 columns: matrixColumnCount,
+                noteCount: matrixNoteCount,
                 predictions: predictedSentiments,
                 shouldCancel: () => cancelMatrixSearchRef.current,
                 onProgress: progress => setMatrixSearchState({
@@ -576,7 +578,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                 setMatrixSearchState({ isSearching: false, progress: 0, message: '' });
             }, 250);
         }
-    }, [formatPitchClassMatrix, matrixColumnCount, matrixRowCount, predictedSentiments, selectedScale]);
+    }, [formatPitchClassMatrix, matrixColumnCount, matrixNoteCount, matrixRowCount, predictedSentiments, selectedScale]);
 
     // Polychord UI state and computation
     const [showPolychord, setShowPolychord] = useState(false);
@@ -1011,6 +1013,18 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                 step={1}
                                 value={matrixColumnCount}
                                 onChange={(e) => setMatrixColumnCount(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                                disabled={isBusy}
+                            />
+                        </Form.Group>
+                        <Form.Group controlId="matrixNoteCount" className="random-matrix-field">
+                            <Form.Label>Notes</Form.Label>
+                            <Form.Control
+                                type="number"
+                                min={1}
+                                max={12}
+                                step={1}
+                                value={matrixNoteCount}
+                                onChange={(e) => setMatrixNoteCount(Math.min(12, Math.max(1, parseInt(e.target.value, 10) || 1)))}
                                 disabled={isBusy}
                             />
                         </Form.Group>
