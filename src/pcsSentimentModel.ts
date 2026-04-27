@@ -357,7 +357,7 @@ export async function trainSentimentModel(
         throw new Error('Label at least one pitch-class set before training the neural network.');
     }
 
-    const totalEpochs = 2000;
+    const totalEpochs = 400;
     const batchSize = trainingDataset.targets.length < 8
         ? trainingDataset.targets.length
         : Math.min(32, Math.max(8, Math.floor(trainingDataset.targets.length / 6)));
