@@ -407,9 +407,10 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     , []);
 
     const updateSentiment = useCallback((chord: PCS12, sentiment: SentimentValue) => {
+        const forte = chord.toString();
         setSentiments(prev => ({
             ...prev,
-            [chord.toString()]: sentiment,
+            [forte]: prev[forte] === sentiment ? null : sentiment,
         }));
     }, []);
 
