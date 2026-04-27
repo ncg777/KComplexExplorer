@@ -407,9 +407,10 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     , []);
 
     const updateSentiment = useCallback((chord: PCS12, sentiment: SentimentValue) => {
+        const forte = chord.toString();
         setSentiments(prev => ({
             ...prev,
-            [chord.toString()]: sentiment,
+            [forte]: prev[forte] === sentiment ? null : sentiment,
         }));
     }, []);
 
@@ -980,9 +981,8 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                 </div>
                 <div className="sentiment-tool-stats">
                     <div><strong>Model:</strong> {hasStoredModel ? 'Loaded' : 'Not loaded'}</div>
-                    <div><strong>Ternary accuracy:</strong> {trainingStats ? `${(trainingStats.ternaryAccuracy * 100).toFixed(1)}%` : '—'}</div>
-                    <div><strong>Labeled accuracy:</strong> {trainingStats?.labeledAccuracy !== null && trainingStats?.labeledAccuracy !== undefined ? `${(trainingStats.labeledAccuracy * 100).toFixed(1)}%` : '—'}</div>
-                    <div><strong>MAE:</strong> {trainingStats ? trainingStats.meanAbsoluteError.toFixed(3) : '—'}</div>
+                    <div><strong>Accuracy:</strong> {trainingStats?.accuracy !== null && trainingStats?.accuracy !== undefined ? `${(trainingStats.accuracy * 100).toFixed(1)}%` : '—'}</div>
+                    <div><strong>MAE:</strong> {trainingStats?.meanAbsoluteError !== null && trainingStats?.meanAbsoluteError !== undefined ? trainingStats.meanAbsoluteError.toFixed(3) : '—'}</div>
                     <div><strong>Epochs:</strong> {trainingStats?.epochsCompleted ?? '—'}</div>
                     <div><strong>Loss:</strong> {trainingStats?.finalLoss !== null && trainingStats?.finalLoss !== undefined ? trainingStats.finalLoss.toFixed(4) : '—'}</div>
                 </div>
