@@ -14,6 +14,7 @@
 - **Playback Options:** Audition the notes of any set upwards, downwards, or simultaneously using the popup buttons.
 - **Sentiment Tracking:** Mark each pitch-class set as liked (+1), neutral (0), or disliked (-1) directly from its popup.
 - **CSV Export for ML Workflows:** Export the full catalog of pitch-class sets, their analysis metadata, and saved sentiments to CSV.
+- **TensorFlow Sentiment Prediction:** Train a TensorFlow.js neural network on the exported numerical fields, review ternary sentiment predictions, and import/export saved model weights.
 - **Installable PWA:** KComplexExplorer is a Progressive Web App—install it as an app on your computer, phone, or tablet for offline use and a native experience.
 - **PCS12 Class Powered (from [ultra-mega-enumerator](https://github.com/ncg777/ultra-mega-enumerator)):**
   - Efficient identification, transposition, and rotation of sets.
@@ -28,6 +29,7 @@
 - **Set Relationships:** Instantly view and navigate all subsets and supersets of any selected set for deep structural insight.
 - **Playback:** Audition sets with upward, downward, or simultaneous playback—ideal for both analysis and inspiration.
 - **Intuitive GUI:** Interactively explore, select, and analyze sets through a responsive graphical interface.
+- **Local ML Loop:** Train the built-in neural network from your saved sentiment labels, keep predictions locally, and reuse exported weights later.
 
 ## Installation & Usage
 
