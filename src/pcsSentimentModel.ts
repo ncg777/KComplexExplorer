@@ -381,7 +381,6 @@ export async function trainSentimentModel(
                 tf.callbacks.earlyStopping({
                     monitor: validationSplit > 0 ? 'val_loss' : 'loss',
                     patience: validationSplit > 0 ? 150 : 50,
-                    restoreBestWeights: true,
                 }),
                 new tf.CustomCallback({
                     onEpochEnd: async (epoch, logs) => {
