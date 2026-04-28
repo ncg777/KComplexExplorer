@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { readFileSync } from 'node:fs';
 import {
   ensureInitialized,
   analyze,
@@ -13,6 +14,9 @@ import {
   transpose,
   sortChords,
   formatAnalysis,
+  generateMatrix,
+  type SentimentPredictionMap,
+  type SentimentScoreMap,
 } from './pcs12-operations.js';
 
 function printUsage(): void {
@@ -62,6 +66,10 @@ Commands:
       Sort pitch-class sets using rotatedCompareTo with the given rotation.
       Example: kcomplex sort-chords 3-11A 3-11B 3-4 --rotate 3
 
+  generate-matrix --upper-bound <forte> --rows <n> --columns <n> --notes <n> --predictions-file <path> [--scores-file <path>] [--stiffness <n>]
+      Generate a constrained random matrix from sentiment predictions stored in JSON files.
+      Example: kcomplex generate-matrix --upper-bound 7-35 --rows 3 --columns 4 --notes 3 --predictions-file ./predictions.json --scores-file ./scores.json --stiffness 1.5
+
 Options:
   --help, -h    Show this help message
   --json        Output results as JSON
@@ -107,6 +115,14 @@ function output(data: unknown, asJson: boolean): void {
     console.log(`Total: ${data.length} results`);
   } else {
     console.log(formatAnalysis(data as any));
+  }
+}
+
+function readJsonFile<T>(path: string, label: string): T {
+  try {
+    return JSON.parse(readFileSync(path, 'utf8')) as T;
+  } catch (error: any) {
+    throw new Error(`Unable to read ${label} from "${path}": ${error.message}`);
   }
 }
 
@@ -272,6 +288,61 @@ async function main(): Promise<void> {
       }
       const results = sortChords(positional, rotate);
       output(results, asJson);
+      break;
+    }
+
+    case 'generate-matrix': {
+      const upperBound = flags['upper-bound'];
+      const rowsRaw = flags['rows'];
+      const columnsRaw = flags['columns'];
+      const notesRaw = flags['notes'];
+      const stiffnessRaw = flags['stiffness'];
+      const predictionsFile = flags['predictions-file'];
+      const scoresFile = flags['scores-file'];
+
+      if (
+        typeof upperBound !== 'string'
+        || typeof rowsRaw !== 'string'
+        || typeof columnsRaw !== 'string'
+        || typeof notesRaw !== 'string'
+        || typeof predictionsFile !== 'string'
+      ) {
+        console.error('Error: generate-matrix requires --upper-bound, --rows, --columns, --notes, and --predictions-file.');
+        process.exit(1);
+      }
+
+      const rows = parseInt(rowsRaw, 10);
+      const columns = parseInt(columnsRaw, 10);
+      const noteCount = parseInt(notesRaw, 10);
+      const stiffness = typeof stiffnessRaw === 'string' ? parseFloat(stiffnessRaw) : 0;
+
+      if ([rows, columns, noteCount].some(value => Number.isNaN(value)) || Number.isNaN(stiffness)) {
+        console.error('Error: --rows, --columns, and --notes must be integers, and --stiffness must be numeric.');
+        process.exit(1);
+      }
+
+      const predictions = readJsonFile<SentimentPredictionMap>(predictionsFile, 'predictions');
+      const predictionScores = typeof scoresFile === 'string'
+        ? readJsonFile<SentimentScoreMap>(scoresFile, 'scores')
+        : undefined;
+
+      const result = await generateMatrix({
+        upperBound,
+        rows,
+        columns,
+        noteCount,
+        predictions,
+        predictionScores,
+        stiffness,
+      });
+
+      if (asJson) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        console.log(result.matrix.map(row => row.join(' ')).join('\n'));
+        console.log('');
+        console.log(`Candidate count: ${result.candidateCount}`);
+      }
       break;
     }
 

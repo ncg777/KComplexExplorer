@@ -5,6 +5,10 @@ import {
   type EntropyLevel,
 } from './interval-vector-entropy.js';
 
+export type PredictedSentimentValue = -1 | 0 | 1;
+export type SentimentPredictionMap = Record<string, PredictedSentimentValue>;
+export type SentimentScoreMap = Record<string, number>;
+
 /**
  * Normalize a Forte number string. If no rotation suffix is present
  * (e.g., "3-11A"), append ".00" so the library can parse it.
@@ -36,6 +40,11 @@ export interface PCS12Analysis {
   symmetries: number[];
   tensionPartition: number[];
   cardinality: number;
+}
+
+export interface PCS12MatrixResult {
+  matrix: string[][];
+  candidateCount: number;
 }
 
 /**
@@ -355,4 +364,247 @@ export function computePolychordMasks(scaleForte: string, chordsText: string): s
   }
 
   return results;
+}
+
+interface AttractiveCandidate {
+  chord: PCS12;
+  forte: string;
+  mask: number;
+  score: number;
+}
+
+function getPitchClassMask(chord: PCS12): number {
+  return chord.asSequence().reduce((mask, pitchClass) => mask | (1 << pitchClass), 0);
+}
+
+function createChordFromMask(mask: number): PCS12 {
+  const set = new Set<number>();
+  for (let pitchClass = 0; pitchClass < 12; pitchClass += 1) {
+    if ((mask & (1 << pitchClass)) !== 0) {
+      set.add(pitchClass);
+    }
+  }
+
+  return PCS12.identify(PCS12.createWithSizeAndSet(12, set));
+}
+
+function getHammingDistance(leftMask: number, rightMask: number): number {
+  let diff = leftMask ^ rightMask;
+  let count = 0;
+
+  while (diff !== 0) {
+    diff &= diff - 1;
+    count += 1;
+  }
+
+  return count;
+}
+
+function getAttractiveCandidates(
+  upperBound: PCS12,
+  noteCount: number,
+  predictions: SentimentPredictionMap,
+  predictionScores: SentimentScoreMap,
+): AttractiveCandidate[] {
+  const subsetOfUpperBound = new SubsetOf(upperBound);
+  return Array.from(PCS12.getChords())
+    .filter((chord): chord is PCS12 => subsetOfUpperBound.apply(chord))
+    .filter(chord => chord.getK() === noteCount)
+    .filter(chord => predictions[chord.toString()] === 1)
+    .sort((a, b) => PCS12.ForteStringComparator(a.toString(), b.toString()))
+    .map(chord => {
+      const forte = chord.toString();
+      const score = predictionScores[forte];
+      return {
+        chord,
+        forte,
+        mask: getPitchClassMask(chord),
+        score: Number.isFinite(score) ? Math.max(score, 0) : 1,
+      };
+    });
+}
+
+function getWeightedCandidateOrder(
+  candidates: AttractiveCandidate[],
+  leftIndex: number,
+  stiffness: number,
+): number[] {
+  const leftMask = leftIndex >= 0 ? candidates[leftIndex].mask : null;
+  const remaining = candidates.map((candidate, candidateIndex) => ({
+    candidateIndex,
+    forte: candidate.forte,
+    weight: Math.max(
+      leftMask === null
+        ? candidate.score
+        : Math.exp(-stiffness * getHammingDistance(leftMask, candidate.mask)) * candidate.score,
+      0,
+    ),
+  }));
+  const ordered: number[] = [];
+
+  while (remaining.length > 0) {
+    const totalWeight = remaining.reduce((sum, entry) => sum + entry.weight, 0);
+    if (!(totalWeight > 0)) {
+      remaining
+        .sort((left, right) => PCS12.ForteStringComparator(left.forte, right.forte))
+        .forEach(entry => ordered.push(entry.candidateIndex));
+      break;
+    }
+
+    let threshold = Math.random() * totalWeight;
+    let selectedIndex = remaining.length - 1;
+    for (let index = 0; index < remaining.length; index += 1) {
+      threshold -= remaining[index].weight;
+      if (threshold <= 0) {
+        selectedIndex = index;
+        break;
+      }
+    }
+
+    const [selected] = remaining.splice(selectedIndex, 1);
+    ordered.push(selected.candidateIndex);
+  }
+
+  return ordered;
+}
+
+export async function generateMatrix(options: {
+  upperBound: string;
+  rows: number;
+  columns: number;
+  noteCount: number;
+  predictions: SentimentPredictionMap;
+  predictionScores?: SentimentScoreMap;
+  stiffness?: number;
+}): Promise<PCS12MatrixResult> {
+  const {
+    upperBound,
+    rows,
+    columns,
+    noteCount,
+    predictions,
+    predictionScores = {},
+    stiffness = 0,
+  } = options;
+
+  if (!Number.isInteger(rows) || rows < 1 || !Number.isInteger(columns) || columns < 1) {
+    throw new Error('Matrix dimensions must be positive integers.');
+  }
+
+  if (!Number.isInteger(noteCount) || noteCount < 1 || noteCount > 12) {
+    throw new Error('Note count must be an integer between 1 and 12.');
+  }
+
+  if (!Number.isFinite(stiffness) || stiffness < 0) {
+    throw new Error('Stiffness must be a finite number greater than or equal to 0.');
+  }
+
+  const parsedUpperBound = parseForteNormalized(upperBound);
+  if (!parsedUpperBound) {
+    throw new Error(`Invalid upper bound Forte number: "${upperBound}"`);
+  }
+
+  const candidates = getAttractiveCandidates(parsedUpperBound, noteCount, predictions, predictionScores);
+  if (candidates.length === 0) {
+    throw new Error('No attractively predicted pitch class sets are available within the selected upper bound.');
+  }
+
+  const matrixIndexes = Array.from({ length: rows }, () => Array.from({ length: columns }, () => -1));
+  const columnUnionMasks = Array.from({ length: columns }, () => 0);
+  const positivityByMask = new Map<number, boolean>();
+  const columnReachabilityCache = new Map<string, boolean>();
+
+  const hasPositivePrediction = (mask: number) => {
+    const cached = positivityByMask.get(mask);
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    const predictedSentiment = predictions[createChordFromMask(mask).toString()] ?? 0;
+    const isPositive = predictedSentiment === 1;
+    positivityByMask.set(mask, isPositive);
+    return isPositive;
+  };
+
+  const canReachPositiveColumnUnion = (mask: number, remainingRows: number): boolean => {
+    if (mask !== 0 && hasPositivePrediction(mask)) {
+      return true;
+    }
+
+    if (remainingRows === 0) {
+      return false;
+    }
+
+    const cacheKey = `${mask}:${remainingRows}`;
+    const cached = columnReachabilityCache.get(cacheKey);
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    for (const candidate of candidates) {
+      if (canReachPositiveColumnUnion(mask | candidate.mask, remainingRows - 1)) {
+        columnReachabilityCache.set(cacheKey, true);
+        return true;
+      }
+    }
+
+    columnReachabilityCache.set(cacheKey, false);
+    return false;
+  };
+
+  const tryPlace = async (position: number): Promise<boolean> => {
+    if (position >= rows * columns) {
+      return columnUnionMasks.every(hasPositivePrediction);
+    }
+
+    const row = Math.floor(position / columns);
+    const column = position % columns;
+    const leftIndex = column > 0 ? matrixIndexes[row][column - 1] : -1;
+    const firstIndexInRow = matrixIndexes[row][0];
+    const previousColumnUnionMask = columnUnionMasks[column];
+    const remainingRowsInColumn = rows - row - 1;
+
+    for (const candidateIndex of getWeightedCandidateOrder(candidates, leftIndex, stiffness)) {
+      const candidateMask = candidates[candidateIndex].mask;
+      const nextColumnUnionMask = previousColumnUnionMask | candidateMask;
+
+      if (leftIndex >= 0 && !hasPositivePrediction(candidateMask | candidates[leftIndex].mask)) {
+        continue;
+      }
+
+      if (!canReachPositiveColumnUnion(nextColumnUnionMask, remainingRowsInColumn)) {
+        continue;
+      }
+
+      if (
+        column === columns - 1
+        && firstIndexInRow >= 0
+        && !hasPositivePrediction(candidateMask | candidates[firstIndexInRow].mask)
+      ) {
+        continue;
+      }
+
+      matrixIndexes[row][column] = candidateIndex;
+      columnUnionMasks[column] = nextColumnUnionMask;
+
+      if (await tryPlace(position + 1)) {
+        return true;
+      }
+
+      matrixIndexes[row][column] = -1;
+      columnUnionMasks[column] = previousColumnUnionMask;
+    }
+
+    return false;
+  };
+
+  const found = await tryPlace(0);
+  if (!found) {
+    throw new Error('No matrix satisfies the current dimensions, cyclic horizontal unions, and global column-union sentiment constraints.');
+  }
+
+  return {
+    matrix: matrixIndexes.map(row => row.map(candidateIndex => candidates[candidateIndex].chord.toString())),
+    candidateCount: candidates.length,
+  };
 }

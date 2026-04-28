@@ -573,7 +573,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
             });
 
             setMatrixOutput(formatPitchClassMatrix(result.matrix));
-            setModelFeedback(`Generated a deterministic ${matrixRowCount}×${matrixColumnCount} matrix from ${result.candidateCount} attractive candidates at β=${matrixStiffness.toFixed(1)}.`);
+            setModelFeedback(`Generated a random ${matrixRowCount}×${matrixColumnCount} matrix from ${result.candidateCount} attractive candidates at β=${matrixStiffness.toFixed(1)}.`);
             setMatrixSearchState({
                 isSearching: true,
                 progress: 100,
@@ -1136,11 +1136,11 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                         shows its <strong>Predicted sentiment</strong>.
                     </p>
                     <p>
-                        Once a model is loaded, the <strong>Constrained matrix generator</strong> can deterministically
+                        Once a model is loaded, the <strong>Constrained matrix generator</strong> can randomly
                         backtrack through attractive model predictions until every cell, every cyclic horizontal union,
                         and every full-column union is attractive within the selected upper bound. The <strong>Stiffness
-                        (β)</strong> slider prioritizes lower-Hamming-distance successors while still allowing
-                        backtracking when the preferred path dead-ends.
+                        (β)</strong> slider biases lower-Hamming-distance successors while still allowing alternative
+                        candidates when the preferred path dead-ends.
                     </p>
                     <h6>Supersets and Subsets:</h6>
                     <p>

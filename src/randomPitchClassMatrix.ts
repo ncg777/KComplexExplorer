@@ -97,6 +97,50 @@ function getAttractiveCandidates(
         });
 }
 
+function getWeightedCandidateOrder(
+    candidates: AttractiveCandidate[],
+    leftIndex: number,
+    stiffness: number,
+): number[] {
+    const leftMask = leftIndex >= 0 ? candidates[leftIndex].mask : null;
+    const remaining = candidates.map((candidate, candidateIndex) => ({
+        candidateIndex,
+        forte: candidate.forte,
+        weight: Math.max(
+            leftMask === null
+                ? candidate.score
+                : Math.exp(-stiffness * getHammingDistance(leftMask, candidate.mask)) * candidate.score,
+            0,
+        ),
+    }));
+    const ordered: number[] = [];
+
+    while (remaining.length > 0) {
+        const totalWeight = remaining.reduce((sum, entry) => sum + entry.weight, 0);
+        if (!(totalWeight > 0)) {
+            remaining
+                .sort((left, right) => PCS12.ForteStringComparator(left.forte, right.forte))
+                .forEach(entry => ordered.push(entry.candidateIndex));
+            break;
+        }
+
+        let threshold = Math.random() * totalWeight;
+        let selectedIndex = remaining.length - 1;
+        for (let index = 0; index < remaining.length; index += 1) {
+            threshold -= remaining[index].weight;
+            if (threshold <= 0) {
+                selectedIndex = index;
+                break;
+            }
+        }
+
+        const [selected] = remaining.splice(selectedIndex, 1);
+        ordered.push(selected.candidateIndex);
+    }
+
+    return ordered;
+}
+
 export async function generateRandomPitchClassMatrix({
     upperBound,
     rows,
@@ -129,7 +173,6 @@ export async function generateRandomPitchClassMatrix({
     const columnUnionMasks = Array.from({ length: columns }, () => 0);
     const positivityByMask = new Map<number, boolean>();
     const columnReachabilityCache = new Map<string, boolean>();
-    const candidateOrderCache = new Map<number, number[]>();
     let visitedStates = 0;
 
     const hasPositivePrediction = (mask: number) => {
@@ -170,30 +213,6 @@ export async function generateRandomPitchClassMatrix({
         return false;
     };
 
-    const getOrderedCandidateIndexes = (leftIndex: number): number[] => {
-        const cached = candidateOrderCache.get(leftIndex);
-        if (cached) {
-            return cached;
-        }
-
-        const leftMask = leftIndex >= 0 ? candidates[leftIndex].mask : null;
-        const ordered = candidates
-            .map((candidate, candidateIndex) => {
-                const weight = leftMask === null
-                    ? candidate.score
-                    : Math.exp(-stiffness * getHammingDistance(leftMask, candidate.mask)) * candidate.score;
-                return { candidateIndex, weight, forte: candidate.forte };
-            })
-            .sort((left, right) =>
-                right.weight - left.weight
-                || PCS12.ForteStringComparator(left.forte, right.forte)
-            )
-            .map(entry => entry.candidateIndex);
-
-        candidateOrderCache.set(leftIndex, ordered);
-        return ordered;
-    };
-
     const maybeYieldToUi = async (position: number) => {
         visitedStates += 1;
         if (visitedStates % UI_YIELD_INTERVAL !== 0) {
@@ -204,7 +223,7 @@ export async function generateRandomPitchClassMatrix({
             progress: Math.round(((visitedStates % SEARCH_PROGRESS_SPAN) / SEARCH_PROGRESS_SPAN) * 100),
             message: `Searching ${rows}×${columns} matrix — explored ${visitedStates.toLocaleString()} states across ${candidates.length.toLocaleString()} candidates.`,
         });
-        await new Promise<void>(resolve => window.setTimeout(resolve, 0));
+        await new Promise<void>(resolve => setTimeout(resolve, 0));
         ensureNotCancelled(shouldCancel);
         if (position === 0) {
             onProgress?.({
@@ -229,7 +248,7 @@ export async function generateRandomPitchClassMatrix({
         const previousColumnUnionMask = columnUnionMasks[column];
         const remainingRowsInColumn = rows - row - 1;
 
-        for (const candidateIndex of getOrderedCandidateIndexes(leftIndex)) {
+        for (const candidateIndex of getWeightedCandidateOrder(candidates, leftIndex, stiffness)) {
             ensureNotCancelled(shouldCancel);
 
             const candidateMask = candidates[candidateIndex].mask;

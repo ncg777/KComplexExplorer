@@ -15,6 +15,7 @@ import {
   computePolychordMasks,
   transpose,
   sortChords,
+  generateMatrix,
   formatAnalysis,
   type PCS12Analysis,
 } from './pcs12-operations.js';
@@ -264,6 +265,41 @@ async function main(): Promise<void> {
         const results = computePolychordMasks(forte, chordsText);
         return {
           content: [{ type: 'text' as const, text: results.join(' ') }],
+        };
+      } catch (err: any) {
+        return { content: [{ type: 'text' as const, text: `Error: ${err.message}` }], isError: true };
+      }
+    },
+  );
+
+  server.tool(
+    'generate_matrix',
+    'Generate a constrained random pitch-class matrix from a prediction map. Requires full Forte-to-sentiment predictions for cells and their unions, plus optional score weights.',
+    {
+      upperBound: z.string().describe('Forte number of the upper bound scale (e.g., "7-35")'),
+      rows: z.number().int().min(1).describe('Number of rows in the matrix'),
+      columns: z.number().int().min(1).describe('Number of columns in the matrix'),
+      noteCount: z.number().int().min(1).max(12).describe('Number of notes per cell'),
+      predictions: z.record(z.string(), z.union([z.literal(-1), z.literal(0), z.literal(1)])).describe('Map of Forte number to ternary sentiment prediction (-1, 0, or 1)'),
+      predictionScores: z.record(z.string(), z.number()).optional().describe('Optional map of Forte number to numeric prediction score used to weight candidates'),
+      stiffness: z.number().min(0).optional().describe('Optional stiffness parameter that biases lower-Hamming-distance successors'),
+    },
+    async ({ upperBound, rows, columns, noteCount, predictions, predictionScores, stiffness }) => {
+      try {
+        const result = await generateMatrix({
+          upperBound,
+          rows,
+          columns,
+          noteCount,
+          predictions,
+          predictionScores,
+          stiffness,
+        });
+        return {
+          content: [{
+            type: 'text' as const,
+            text: `${result.matrix.map(row => row.join(' ')).join('\n')}\n\nCandidate count: ${result.candidateCount}`,
+          }],
         };
       } catch (err: any) {
         return { content: [{ type: 'text' as const, text: `Error: ${err.message}` }], isError: true };
