@@ -13,8 +13,10 @@ import {
     importSentimentModel,
     loadStoredSentimentModel,
     loadStoredSentimentPredictions,
+    loadStoredSentimentScores,
     loadStoredSentimentTrainingStats,
     SentimentPredictionMap,
+    SentimentScoreMap,
     SentimentTrainingStats,
     trainSentimentModel,
 } from './pcsSentimentModel';
@@ -73,6 +75,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const [zMates, setZMates] = useState<PCS12[]>([]);
     const [sentiments, setSentiments] = useState(() => loadSentiments());
     const [predictedSentiments, setPredictedSentiments] = useState<SentimentPredictionMap>(() => loadStoredSentimentPredictions());
+    const [predictedSentimentScores, setPredictedSentimentScores] = useState<SentimentScoreMap>(() => loadStoredSentimentScores());
     const [trainingStats, setTrainingStats] = useState<SentimentTrainingStats | null>(() => loadStoredSentimentTrainingStats());
     const [hasStoredModel, setHasStoredModel] = useState(false);
     const [trainingOverlay, setTrainingOverlay] = useState<TrainingOverlayState>({ isBusy: false, progress: 0, message: '' });
@@ -81,6 +84,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const [matrixRowCount, setMatrixRowCount] = useState(3);
     const [matrixColumnCount, setMatrixColumnCount] = useState(4);
     const [matrixNoteCount, setMatrixNoteCount] = useState(3);
+    const [matrixStiffness, setMatrixStiffness] = useState(0);
     const [matrixOutput, setMatrixOutput] = useState('');
     const modelRef = useRef<tf.LayersModel | null>(null);
     const trainingStatsRef = useRef<SentimentTrainingStats | null>(trainingStats);
@@ -127,6 +131,8 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         let cancelled = false;
 
         const loadModel = async () => {
+            const storedPredictions = loadStoredSentimentPredictions();
+            const storedScores = loadStoredSentimentScores();
             const storedModel = await loadStoredSentimentModel();
             if (cancelled) {
                 storedModel?.dispose();
@@ -135,10 +141,11 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
 
             updateLoadedModel(storedModel);
 
-            if (storedModel && Object.keys(loadStoredSentimentPredictions()).length === 0) {
+            if (storedModel && (Object.keys(storedPredictions).length === 0 || Object.keys(storedScores).length === 0)) {
                 const evaluation = await evaluateSentimentModel(storedModel, sentiments, trainingStats ?? undefined);
                 if (!cancelled) {
                     setPredictedSentiments(evaluation.predictions);
+                    setPredictedSentimentScores(evaluation.scores);
                     setTrainingStats(prev => prev ?? evaluation.stats);
                 }
             }
@@ -244,6 +251,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         evaluateSentimentModel(modelRef.current, sentiments, trainingStatsRef.current ?? undefined).then(result => {
             if (cancelled) return;
             setPredictedSentiments(result.predictions);
+            setPredictedSentimentScores(result.scores);
             setTrainingStats(result.stats);
         }).catch(error => {
             console.error('Unable to refresh neural-network sentiment predictions.', error);
@@ -450,6 +458,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
 
             updateLoadedModel(result.model);
             setPredictedSentiments(result.predictions);
+            setPredictedSentimentScores(result.scores);
             setTrainingStats(result.stats);
             setModelFeedback('Neural-network training complete. Predictions and weights were saved locally.');
             setTrainingOverlay({
@@ -504,6 +513,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
             const result = await importSentimentModel(files, sentiments);
             updateLoadedModel(result.model);
             setPredictedSentiments(result.predictions);
+            setPredictedSentimentScores(result.scores);
             setTrainingStats(result.stats);
             setModelFeedback('Imported neural-network weights and refreshed predictions.');
             setTrainingOverlay({
@@ -542,7 +552,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         setMatrixSearchState({
             isSearching: true,
             progress: 0,
-            message: 'Preparing random matrix search...',
+            message: 'Preparing constrained matrix search...',
         });
 
         try {
@@ -552,6 +562,8 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                 columns: matrixColumnCount,
                 noteCount: matrixNoteCount,
                 predictions: predictedSentiments,
+                predictionScores: predictedSentimentScores,
+                stiffness: matrixStiffness,
                 shouldCancel: () => cancelMatrixSearchRef.current,
                 onProgress: progress => setMatrixSearchState({
                     isSearching: true,
@@ -561,7 +573,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
             });
 
             setMatrixOutput(formatPitchClassMatrix(result.matrix));
-            setModelFeedback(`Generated a ${matrixRowCount}×${matrixColumnCount} matrix from ${result.candidateCount} positively predicted candidates.`);
+            setModelFeedback(`Generated a deterministic ${matrixRowCount}×${matrixColumnCount} matrix from ${result.candidateCount} attractive candidates at β=${matrixStiffness.toFixed(1)}.`);
             setMatrixSearchState({
                 isSearching: true,
                 progress: 100,
@@ -569,17 +581,17 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
             });
         } catch (error) {
             if (error instanceof RandomPitchClassMatrixSearchCancelledError) {
-                setModelFeedback('Random matrix search cancelled.');
+                setModelFeedback('Constrained matrix search cancelled.');
             } else {
                 console.error('Unable to generate a random pitch-class matrix.', error);
-                setModelFeedback(error instanceof Error ? error.message : 'Unable to generate a random matrix.');
+                setModelFeedback(error instanceof Error ? error.message : 'Unable to generate a constrained matrix.');
             }
         } finally {
             window.setTimeout(() => {
                 setMatrixSearchState({ isSearching: false, progress: 0, message: '' });
             }, 250);
         }
-    }, [formatPitchClassMatrix, matrixColumnCount, matrixNoteCount, matrixRowCount, predictedSentiments, selectedScale]);
+    }, [formatPitchClassMatrix, matrixColumnCount, matrixNoteCount, matrixRowCount, matrixStiffness, predictedSentimentScores, predictedSentiments, selectedScale]);
 
     // Polychord UI state and computation
     const [showPolychord, setShowPolychord] = useState(false);
@@ -990,8 +1002,8 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
             {hasStoredModel && (
                 <div className="random-matrix-panel">
                     <div className="random-matrix-header">
-                        <strong>Positive random matrix</strong>
-                        <span className="random-matrix-subtitle">Uses the selected upper bound and positive neural-network predictions.</span>
+                        <strong>Constrained matrix generator</strong>
+                        <span className="random-matrix-subtitle">Uses attractive model predictions with cyclic horizontal, global vertical, and stiffness-weighted search constraints.</span>
                     </div>
                     <div className="random-matrix-controls">
                         <Form.Group controlId="matrixRows" className="random-matrix-field">
@@ -1028,13 +1040,24 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                 disabled={isBusy}
                             />
                         </Form.Group>
+                        <Form.Group controlId="matrixStiffness" className="random-matrix-field random-matrix-field-slider">
+                            <Form.Label>Stiffness (β): {matrixStiffness.toFixed(1)}</Form.Label>
+                            <Form.Range
+                                min={0}
+                                max={10}
+                                step={0.1}
+                                value={matrixStiffness}
+                                onChange={(e) => setMatrixStiffness(Number.parseFloat(e.target.value) || 0)}
+                                disabled={isBusy}
+                            />
+                        </Form.Group>
                         <div className="random-matrix-actions">
                             <Button
                                 variant="warning"
                                 onClick={handleGenerateRandomMatrix}
                                 disabled={isBusy}
                             >
-                                Generate Random Matrix
+                                Generate Matrix
                             </Button>
                             <Button
                                 variant="outline-secondary"
@@ -1113,9 +1136,11 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                         shows its <strong>Predicted sentiment</strong>.
                     </p>
                     <p>
-                        Once a model is loaded, the <strong>Positive random matrix</strong> tool can search for a matrix
-                        whose cells, horizontal neighbours (including wrap-around), and full column unions all keep a
-                        positive predicted sentiment within the selected upper bound.
+                        Once a model is loaded, the <strong>Constrained matrix generator</strong> can deterministically
+                        backtrack through attractive model predictions until every cell, every cyclic horizontal union,
+                        and every full-column union is attractive within the selected upper bound. The <strong>Stiffness
+                        (β)</strong> slider prioritizes lower-Hamming-distance successors while still allowing
+                        backtracking when the preferred path dead-ends.
                     </p>
                     <h6>Supersets and Subsets:</h6>
                     <p>
