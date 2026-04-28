@@ -85,6 +85,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const [matrixColumnCount, setMatrixColumnCount] = useState(4);
     const [matrixNoteCount, setMatrixNoteCount] = useState(3);
     const [matrixStiffness, setMatrixStiffness] = useState(0);
+    const [matrixStasisWeight, setMatrixStasisWeight] = useState(0.1);
     const [matrixOutput, setMatrixOutput] = useState('');
     const modelRef = useRef<tf.LayersModel | null>(null);
     const trainingStatsRef = useRef<SentimentTrainingStats | null>(trainingStats);
@@ -564,6 +565,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                 predictions: predictedSentiments,
                 predictionScores: predictedSentimentScores,
                 stiffness: matrixStiffness,
+                stasisWeight: matrixStasisWeight,
                 shouldCancel: () => cancelMatrixSearchRef.current,
                 onProgress: progress => setMatrixSearchState({
                     isSearching: true,
@@ -573,7 +575,10 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
             });
 
             setMatrixOutput(formatPitchClassMatrix(result.matrix));
-            setModelFeedback(`Generated a random ${matrixRowCount}×${matrixColumnCount} matrix from ${result.candidateCount} attractive candidates at β=${matrixStiffness.toFixed(1)}.`);
+            setModelFeedback(
+                `Generated a random ${matrixRowCount}×${matrixColumnCount} matrix from ${result.candidateCount} attractive candidates `
+                + `at β=${matrixStiffness.toFixed(1)}, stasis=${matrixStasisWeight.toFixed(2)}, seed=${result.seed}.`
+            );
             setMatrixSearchState({
                 isSearching: true,
                 progress: 100,
@@ -591,7 +596,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                 setMatrixSearchState({ isSearching: false, progress: 0, message: '' });
             }, 250);
         }
-    }, [formatPitchClassMatrix, matrixColumnCount, matrixNoteCount, matrixRowCount, matrixStiffness, predictedSentimentScores, predictedSentiments, selectedScale]);
+    }, [formatPitchClassMatrix, matrixColumnCount, matrixNoteCount, matrixRowCount, matrixStasisWeight, matrixStiffness, predictedSentimentScores, predictedSentiments, selectedScale]);
 
     // Polychord UI state and computation
     const [showPolychord, setShowPolychord] = useState(false);
@@ -1003,7 +1008,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                 <div className="random-matrix-panel">
                     <div className="random-matrix-header">
                         <strong>Constrained matrix generator</strong>
-                        <span className="random-matrix-subtitle">Uses attractive model predictions with cyclic horizontal, global vertical, and stiffness-weighted search constraints.</span>
+                        <span className="random-matrix-subtitle">Uses attractive model predictions with cyclic horizontal, global vertical, stiffness-weighted motion, and explicit stasis control.</span>
                     </div>
                     <div className="random-matrix-controls">
                         <Form.Group controlId="matrixRows" className="random-matrix-field">
@@ -1048,6 +1053,17 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                 step={0.1}
                                 value={matrixStiffness}
                                 onChange={(e) => setMatrixStiffness(Number.parseFloat(e.target.value) || 0)}
+                                disabled={isBusy}
+                            />
+                        </Form.Group>
+                        <Form.Group controlId="matrixStasisWeight" className="random-matrix-field random-matrix-field-slider">
+                            <Form.Label>Stasis probability: {matrixStasisWeight.toFixed(2)}</Form.Label>
+                            <Form.Range
+                                min={0}
+                                max={1}
+                                step={0.01}
+                                value={matrixStasisWeight}
+                                onChange={(e) => setMatrixStasisWeight(Number.parseFloat(e.target.value) || 0)}
                                 disabled={isBusy}
                             />
                         </Form.Group>
@@ -1139,8 +1155,8 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                         Once a model is loaded, the <strong>Constrained matrix generator</strong> can randomly
                         backtrack through attractive model predictions until every cell, every cyclic horizontal union,
                         and every full-column union is attractive within the selected upper bound. The <strong>Stiffness
-                        (β)</strong> slider biases lower-Hamming-distance successors while still allowing alternative
-                        candidates when the preferred path dead-ends.
+                        (β)</strong> slider biases lower-Hamming-distance successors, while <strong>Stasis probability</strong>
+                        controls how willing the machine is to repeat the exact same set on the next beat.
                     </p>
                     <h6>Supersets and Subsets:</h6>
                     <p>

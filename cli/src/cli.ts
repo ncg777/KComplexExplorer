@@ -66,9 +66,9 @@ Commands:
       Sort pitch-class sets using rotatedCompareTo with the given rotation.
       Example: kcomplex sort-chords 3-11A 3-11B 3-4 --rotate 3
 
-  generate-matrix --upper-bound <forte> --rows <n> --columns <n> --notes <n> --predictions-file <path> [--scores-file <path>] [--stiffness <n>]
+  generate-matrix --upper-bound <forte> --rows <n> --columns <n> --notes <n> --predictions-file <path> [--scores-file <path>] [--stiffness <n>] [--stasis-weight <n>] [--seed <n>]
       Generate a constrained random matrix from sentiment predictions stored in JSON files.
-      Example: kcomplex generate-matrix --upper-bound 7-35 --rows 3 --columns 4 --notes 3 --predictions-file ./predictions.json --scores-file ./scores.json --stiffness 1.5
+      Example: kcomplex generate-matrix --upper-bound 7-35 --rows 3 --columns 4 --notes 3 --predictions-file ./predictions.json --scores-file ./scores.json --stiffness 1.5 --stasis-weight 0.1 --seed 1234
 
 Options:
   --help, -h    Show this help message
@@ -297,6 +297,8 @@ async function main(): Promise<void> {
       const columnsRaw = flags['columns'];
       const notesRaw = flags['notes'];
       const stiffnessRaw = flags['stiffness'];
+      const stasisWeightRaw = flags['stasis-weight'];
+      const seedRaw = flags['seed'];
       const predictionsFile = flags['predictions-file'];
       const scoresFile = flags['scores-file'];
 
@@ -315,9 +317,16 @@ async function main(): Promise<void> {
       const columns = parseInt(columnsRaw, 10);
       const noteCount = parseInt(notesRaw, 10);
       const stiffness = typeof stiffnessRaw === 'string' ? parseFloat(stiffnessRaw) : 0;
+      const stasisWeight = typeof stasisWeightRaw === 'string' ? parseFloat(stasisWeightRaw) : 0.1;
+      const seed = typeof seedRaw === 'string' ? parseFloat(seedRaw) : undefined;
 
-      if ([rows, columns, noteCount].some(value => Number.isNaN(value)) || Number.isNaN(stiffness)) {
-        console.error('Error: --rows, --columns, and --notes must be integers, and --stiffness must be numeric.');
+      if (
+        [rows, columns, noteCount].some(value => Number.isNaN(value))
+        || Number.isNaN(stiffness)
+        || Number.isNaN(stasisWeight)
+        || (typeof seed === 'number' && Number.isNaN(seed))
+      ) {
+        console.error('Error: --rows, --columns, and --notes must be integers; --stiffness, --stasis-weight, and --seed must be numeric.');
         process.exit(1);
       }
 
@@ -334,6 +343,8 @@ async function main(): Promise<void> {
         predictions,
         predictionScores,
         stiffness,
+        stasisWeight,
+        seed,
       });
 
       if (asJson) {
@@ -342,6 +353,7 @@ async function main(): Promise<void> {
         console.log(result.matrix.map(row => row.join(' ')).join('\n'));
         console.log('');
         console.log(`Candidate count: ${result.candidateCount}`);
+        console.log(`Seed: ${result.seed}`);
       }
       break;
     }

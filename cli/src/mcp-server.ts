@@ -283,8 +283,10 @@ async function main(): Promise<void> {
       predictions: z.record(z.string(), z.union([z.literal(-1), z.literal(0), z.literal(1)])).describe('Map of Forte number to ternary sentiment prediction (-1, 0, or 1)'),
       predictionScores: z.record(z.string(), z.number()).optional().describe('Optional map of Forte number to numeric prediction score used to weight candidates'),
       stiffness: z.number().min(0).optional().describe('Optional stiffness parameter that biases lower-Hamming-distance successors'),
+      stasisWeight: z.number().min(0).max(1).optional().describe('Optional stasis weight for exact repeats (0 disables stasis, 1 keeps it as likely as score alone)'),
+      seed: z.number().optional().describe('Optional seed for reproducible probabilistic selection'),
     },
-    async ({ upperBound, rows, columns, noteCount, predictions, predictionScores, stiffness }) => {
+    async ({ upperBound, rows, columns, noteCount, predictions, predictionScores, stiffness, stasisWeight, seed }) => {
       try {
         const result = await generateMatrix({
           upperBound,
@@ -294,11 +296,13 @@ async function main(): Promise<void> {
           predictions,
           predictionScores,
           stiffness,
+          stasisWeight,
+          seed,
         });
         return {
           content: [{
             type: 'text' as const,
-            text: `${result.matrix.map(row => row.join(' ')).join('\n')}\n\nCandidate count: ${result.candidateCount}`,
+            text: `${result.matrix.map(row => row.join(' ')).join('\n')}\n\nCandidate count: ${result.candidateCount}\nSeed: ${result.seed}`,
           }],
         };
       } catch (err: any) {

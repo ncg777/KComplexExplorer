@@ -14,6 +14,8 @@ export interface RandomPitchClassMatrixSearchOptions {
     predictions: SentimentPredictionMap;
     predictionScores?: SentimentScoreMap;
     stiffness?: number;
+    stasisWeight?: number;
+    seed?: number;
     shouldCancel?: () => boolean;
     onProgress?: (progress: RandomPitchClassMatrixProgress) => void;
 }
@@ -21,6 +23,7 @@ export interface RandomPitchClassMatrixSearchOptions {
 export interface RandomPitchClassMatrixSearchResult {
     matrix: PCS12[][];
     candidateCount: number;
+    seed: number;
 }
 
 export class RandomPitchClassMatrixSearchCancelledError extends Error {
@@ -39,6 +42,8 @@ interface AttractiveCandidate {
 
 const UI_YIELD_INTERVAL = 250;
 const SEARCH_PROGRESS_SPAN = 2000;
+
+type RandomNumberGenerator = () => number;
 
 function ensureNotCancelled(shouldCancel?: () => boolean) {
     if (shouldCancel?.()) {
@@ -97,19 +102,59 @@ function getAttractiveCandidates(
         });
 }
 
+function normalizeSeed(seed: number): number {
+    return (Math.abs(Math.trunc(seed)) || 1) >>> 0;
+}
+
+function createSeededRandom(seed: number): RandomNumberGenerator {
+    let state = normalizeSeed(seed);
+    return () => {
+        state = (state + 0x6D2B79F5) >>> 0;
+        let t = Math.imul(state ^ (state >>> 15), state | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+function getCandidateWeight(
+    leftMask: number | null,
+    candidateMask: number,
+    score: number,
+    stiffness: number,
+    stasisWeight: number,
+): number {
+    if (leftMask === null) {
+        return Math.max(score, 0);
+    }
+
+    const distance = getHammingDistance(leftMask, candidateMask);
+    if (distance === 0) {
+        return Math.max(stasisWeight * score, 0);
+    }
+
+    return Math.max(Math.exp(-stiffness * distance) * score, 0);
+}
+
 function getWeightedCandidateOrder(
     candidates: AttractiveCandidate[],
+    candidateIndexes: number[],
     leftIndex: number,
     stiffness: number,
+    stasisWeight: number,
+    random: RandomNumberGenerator,
 ): number[] {
     const leftMask = leftIndex >= 0 ? candidates[leftIndex].mask : null;
-    const remaining = candidates.map((candidate, candidateIndex) => ({
+    const remaining = candidateIndexes.map(candidateIndex => ({
         candidateIndex,
-        forte: candidate.forte,
+        forte: candidates[candidateIndex].forte,
         weight: Math.max(
-            leftMask === null
-                ? candidate.score
-                : Math.exp(-stiffness * getHammingDistance(leftMask, candidate.mask)) * candidate.score,
+            getCandidateWeight(
+                leftMask,
+                candidates[candidateIndex].mask,
+                candidates[candidateIndex].score,
+                stiffness,
+                stasisWeight,
+            ),
             0,
         ),
     }));
@@ -124,7 +169,7 @@ function getWeightedCandidateOrder(
             break;
         }
 
-        let threshold = Math.random() * totalWeight;
+        let threshold = random() * totalWeight;
         let selectedIndex = remaining.length - 1;
         for (let index = 0; index < remaining.length; index += 1) {
             threshold -= remaining[index].weight;
@@ -149,6 +194,8 @@ export async function generateRandomPitchClassMatrix({
     predictions,
     predictionScores = {},
     stiffness = 0,
+    stasisWeight = 0.1,
+    seed = Date.now(),
     shouldCancel,
     onProgress,
 }: RandomPitchClassMatrixSearchOptions): Promise<RandomPitchClassMatrixSearchResult> {
@@ -164,10 +211,20 @@ export async function generateRandomPitchClassMatrix({
         throw new Error('Stiffness must be a finite number greater than or equal to 0.');
     }
 
+    if (!Number.isFinite(stasisWeight) || stasisWeight < 0 || stasisWeight > 1) {
+        throw new Error('Stasis weight must be a finite number between 0 and 1.');
+    }
+
+    if (!Number.isFinite(seed)) {
+        throw new Error('Seed must be a finite number.');
+    }
+
     const candidates = getAttractiveCandidates(upperBound, noteCount, predictions, predictionScores);
     if (candidates.length === 0) {
         throw new Error('No attractively predicted pitch class sets are available within the selected upper bound.');
     }
+    const normalizedSeed = normalizeSeed(seed);
+    const random = createSeededRandom(normalizedSeed);
 
     const matrixIndexes = Array.from({ length: rows }, () => Array.from({ length: columns }, () => -1));
     const columnUnionMasks = Array.from({ length: columns }, () => 0);
@@ -247,10 +304,9 @@ export async function generateRandomPitchClassMatrix({
         const firstIndexInRow = matrixIndexes[row][0];
         const previousColumnUnionMask = columnUnionMasks[column];
         const remainingRowsInColumn = rows - row - 1;
+        const validCandidateIndexes: number[] = [];
 
-        for (const candidateIndex of getWeightedCandidateOrder(candidates, leftIndex, stiffness)) {
-            ensureNotCancelled(shouldCancel);
-
+        for (let candidateIndex = 0; candidateIndex < candidates.length; candidateIndex += 1) {
             const candidateMask = candidates[candidateIndex].mask;
             const nextColumnUnionMask = previousColumnUnionMask | candidateMask;
 
@@ -269,6 +325,22 @@ export async function generateRandomPitchClassMatrix({
             ) {
                 continue;
             }
+
+            validCandidateIndexes.push(candidateIndex);
+        }
+
+        for (const candidateIndex of getWeightedCandidateOrder(
+            candidates,
+            validCandidateIndexes,
+            leftIndex,
+            stiffness,
+            stasisWeight,
+            random,
+        )) {
+            ensureNotCancelled(shouldCancel);
+
+            const candidateMask = candidates[candidateIndex].mask;
+            const nextColumnUnionMask = previousColumnUnionMask | candidateMask;
 
             matrixIndexes[row][column] = candidateIndex;
             columnUnionMasks[column] = nextColumnUnionMask;
@@ -299,5 +371,6 @@ export async function generateRandomPitchClassMatrix({
             row.map(candidateIndex => candidates[candidateIndex].chord)
         ),
         candidateCount: candidates.length,
+        seed: normalizedSeed,
     };
 }
