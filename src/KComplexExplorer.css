@@ -333,6 +333,11 @@ h4 {
     min-width: 100px;
 }
 
+.random-matrix-field-slider {
+    min-width: 220px;
+    flex: 1 1 220px;
+}
+
 .random-matrix-actions {
     display: flex;
     flex-wrap: wrap;

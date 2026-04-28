@@ -1,5 +1,5 @@
 import { PCS12, SubsetOf } from 'ultra-mega-enumerator';
-import { SentimentPredictionMap } from './pcsSentimentModel';
+import { SentimentPredictionMap, SentimentScoreMap } from './pcsSentimentModel';
 
 export interface RandomPitchClassMatrixProgress {
     progress: number;
@@ -12,6 +12,8 @@ export interface RandomPitchClassMatrixSearchOptions {
     columns: number;
     noteCount: number;
     predictions: SentimentPredictionMap;
+    predictionScores?: SentimentScoreMap;
+    stiffness?: number;
     shouldCancel?: () => boolean;
     onProgress?: (progress: RandomPitchClassMatrixProgress) => void;
 }
@@ -23,9 +25,16 @@ export interface RandomPitchClassMatrixSearchResult {
 
 export class RandomPitchClassMatrixSearchCancelledError extends Error {
     constructor() {
-        super('Random matrix search cancelled.');
+        super('Constrained matrix search cancelled.');
         this.name = 'RandomPitchClassMatrixSearchCancelledError';
     }
+}
+
+interface AttractiveCandidate {
+    chord: PCS12;
+    forte: string;
+    mask: number;
+    score: number;
 }
 
 const UI_YIELD_INTERVAL = 250;
@@ -52,13 +61,40 @@ function createChordFromMask(mask: number): PCS12 {
     return PCS12.identify(PCS12.createWithSizeAndSet(12, set));
 }
 
-function getPositiveCandidates(upperBound: PCS12, noteCount: number, predictions: SentimentPredictionMap): PCS12[] {
+function getHammingDistance(leftMask: number, rightMask: number): number {
+    let diff = leftMask ^ rightMask;
+    let count = 0;
+
+    while (diff !== 0) {
+        diff &= diff - 1;
+        count += 1;
+    }
+
+    return count;
+}
+
+function getAttractiveCandidates(
+    upperBound: PCS12,
+    noteCount: number,
+    predictions: SentimentPredictionMap,
+    predictionScores: SentimentScoreMap,
+): AttractiveCandidate[] {
     const subsetOfUpperBound = new SubsetOf(upperBound);
     return Array.from(PCS12.getChords())
         .filter(chord => subsetOfUpperBound.apply(chord))
         .filter(chord => chord.getK() === noteCount)
         .filter(chord => predictions[chord.toString()] === 1)
-        .sort((a, b) => PCS12.ForteStringComparator(a.toString(), b.toString()));
+        .sort((a, b) => PCS12.ForteStringComparator(a.toString(), b.toString()))
+        .map(chord => {
+            const forte = chord.toString();
+            const score = predictionScores[forte];
+            return {
+                chord,
+                forte,
+                mask: getPitchClassMask(chord),
+                score: Number.isFinite(score) ? Math.max(score, 0) : 1,
+            };
+        });
 }
 
 export async function generateRandomPitchClassMatrix({
@@ -67,6 +103,8 @@ export async function generateRandomPitchClassMatrix({
     columns,
     noteCount,
     predictions,
+    predictionScores = {},
+    stiffness = 0,
     shouldCancel,
     onProgress,
 }: RandomPitchClassMatrixSearchOptions): Promise<RandomPitchClassMatrixSearchResult> {
@@ -78,15 +116,20 @@ export async function generateRandomPitchClassMatrix({
         throw new Error('Note count must be an integer between 1 and 12.');
     }
 
-    const candidates = getPositiveCandidates(upperBound, noteCount, predictions);
-    if (candidates.length === 0) {
-        throw new Error('No positively predicted pitch class sets are available within the selected upper bound.');
+    if (!Number.isFinite(stiffness) || stiffness < 0) {
+        throw new Error('Stiffness must be a finite number greater than or equal to 0.');
     }
 
-    const candidateMasks = candidates.map(getPitchClassMask);
+    const candidates = getAttractiveCandidates(upperBound, noteCount, predictions, predictionScores);
+    if (candidates.length === 0) {
+        throw new Error('No attractively predicted pitch class sets are available within the selected upper bound.');
+    }
+
     const matrixIndexes = Array.from({ length: rows }, () => Array.from({ length: columns }, () => -1));
     const columnUnionMasks = Array.from({ length: columns }, () => 0);
     const positivityByMask = new Map<number, boolean>();
+    const columnReachabilityCache = new Map<string, boolean>();
+    const candidateOrderCache = new Map<number, number[]>();
     let visitedStates = 0;
 
     const hasPositivePrediction = (mask: number) => {
@@ -99,6 +142,56 @@ export async function generateRandomPitchClassMatrix({
         const isPositive = predictedSentiment === 1;
         positivityByMask.set(mask, isPositive);
         return isPositive;
+    };
+
+    const canReachPositiveColumnUnion = (mask: number, remainingRows: number): boolean => {
+        if (mask !== 0 && hasPositivePrediction(mask)) {
+            return true;
+        }
+
+        if (remainingRows === 0) {
+            return false;
+        }
+
+        const cacheKey = `${mask}:${remainingRows}`;
+        const cached = columnReachabilityCache.get(cacheKey);
+        if (cached !== undefined) {
+            return cached;
+        }
+
+        for (const candidate of candidates) {
+            if (canReachPositiveColumnUnion(mask | candidate.mask, remainingRows - 1)) {
+                columnReachabilityCache.set(cacheKey, true);
+                return true;
+            }
+        }
+
+        columnReachabilityCache.set(cacheKey, false);
+        return false;
+    };
+
+    const getOrderedCandidateIndexes = (leftIndex: number): number[] => {
+        const cached = candidateOrderCache.get(leftIndex);
+        if (cached) {
+            return cached;
+        }
+
+        const leftMask = leftIndex >= 0 ? candidates[leftIndex].mask : null;
+        const ordered = candidates
+            .map((candidate, candidateIndex) => {
+                const weight = leftMask === null
+                    ? candidate.score
+                    : Math.exp(-stiffness * getHammingDistance(leftMask, candidate.mask)) * candidate.score;
+                return { candidateIndex, weight, forte: candidate.forte };
+            })
+            .sort((left, right) =>
+                right.weight - left.weight
+                || PCS12.ForteStringComparator(left.forte, right.forte)
+            )
+            .map(entry => entry.candidateIndex);
+
+        candidateOrderCache.set(leftIndex, ordered);
+        return ordered;
     };
 
     const maybeYieldToUi = async (position: number) => {
@@ -126,42 +219,40 @@ export async function generateRandomPitchClassMatrix({
         await maybeYieldToUi(position);
 
         if (position >= rows * columns) {
-            return true;
+            return columnUnionMasks.every(hasPositivePrediction);
         }
 
         const row = Math.floor(position / columns);
         const column = position % columns;
         const leftIndex = column > 0 ? matrixIndexes[row][column - 1] : -1;
         const firstIndexInRow = matrixIndexes[row][0];
-        const columnUnionMask = columnUnionMasks[column];
-        const candidateCount = candidates.length;
-        const startOffset = Math.floor(Math.random() * candidateCount);
+        const previousColumnUnionMask = columnUnionMasks[column];
+        const remainingRowsInColumn = rows - row - 1;
 
-        for (let offset = 0; offset < candidateCount; offset += 1) {
+        for (const candidateIndex of getOrderedCandidateIndexes(leftIndex)) {
             ensureNotCancelled(shouldCancel);
 
-            const candidateIndex = (startOffset + offset) % candidateCount;
-            const candidateMask = candidateMasks[candidateIndex];
+            const candidateMask = candidates[candidateIndex].mask;
+            const nextColumnUnionMask = previousColumnUnionMask | candidateMask;
 
-            if (leftIndex >= 0 && !hasPositivePrediction(candidateMask | candidateMasks[leftIndex])) {
+            if (leftIndex >= 0 && !hasPositivePrediction(candidateMask | candidates[leftIndex].mask)) {
                 continue;
             }
 
-            if (columnUnionMask !== 0 && !hasPositivePrediction(candidateMask | columnUnionMask)) {
+            if (!canReachPositiveColumnUnion(nextColumnUnionMask, remainingRowsInColumn)) {
                 continue;
             }
 
             if (
                 column === columns - 1 &&
                 firstIndexInRow >= 0 &&
-                !hasPositivePrediction(candidateMask | candidateMasks[firstIndexInRow])
+                !hasPositivePrediction(candidateMask | candidates[firstIndexInRow].mask)
             ) {
                 continue;
             }
 
-            const previousColumnUnionMask = columnUnionMasks[column];
             matrixIndexes[row][column] = candidateIndex;
-            columnUnionMasks[column] = previousColumnUnionMask | candidateMask;
+            columnUnionMasks[column] = nextColumnUnionMask;
 
             if (await tryPlace(position + 1)) {
                 return true;
@@ -181,12 +272,12 @@ export async function generateRandomPitchClassMatrix({
 
     const found = await tryPlace(0);
     if (!found) {
-        throw new Error('No matrix satisfies the current dimensions and predicted-sentiment constraints.');
+        throw new Error('No matrix satisfies the current dimensions, cyclic horizontal unions, and global column-union sentiment constraints.');
     }
 
     return {
         matrix: matrixIndexes.map(row =>
-            row.map(candidateIndex => candidates[candidateIndex])
+            row.map(candidateIndex => candidates[candidateIndex].chord)
         ),
         candidateCount: candidates.length,
     };
