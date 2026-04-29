@@ -1,6 +1,11 @@
 import * as tf from '@tensorflow/tfjs';
 import { PCS12 } from 'ultra-mega-enumerator';
-import { getPitchClassSetNumericalFeatures, SentimentMap, SentimentValue } from './pcsSentiment';
+import {
+    getPitchClassSetNumericalFeatures,
+    PITCH_CLASS_SET_NUMERICAL_FEATURE_HEADERS,
+    SentimentMap,
+    SentimentValue,
+} from './pcsSentiment';
 
 export type PredictedSentimentValue = -1 | 0 | 1;
 export type SentimentPredictionMap = Record<string, PredictedSentimentValue>;
@@ -15,6 +20,30 @@ export interface SentimentTrainingStats {
     finalLoss: number | null;
     finalValidationLoss: number | null;
     updatedAt: string;
+}
+
+export interface SentimentModelLayerConfig {
+    className: string;
+    config: Record<string, unknown>;
+}
+
+export interface SentimentModelSettings {
+    inputSize: number | null;
+    optimizer: 'adam';
+    learningRate: number;
+    loss: 'huberLoss';
+    outputActivation: 'tanh';
+    layers: SentimentModelLayerConfig[];
+}
+
+export interface SerializedSentimentModelArtifacts {
+    format: string | null;
+    generatedBy: string | null;
+    convertedBy: string | null;
+    modelTopology: Record<string, unknown>;
+    weightSpecs: tf.io.WeightsManifestEntry[];
+    weightDataBase64: string;
+    modelSettings: SentimentModelSettings;
 }
 
 interface DatasetBundle {
@@ -32,6 +61,87 @@ export const PCS_SENTIMENT_MODEL_STORAGE_URL = 'localstorage://kcomplex-pcs-sent
 export const PCS_SENTIMENT_PREDICTIONS_STORAGE_KEY = 'kcomplex-pcs-sentiment-predictions';
 export const PCS_SENTIMENT_SCORES_STORAGE_KEY = 'kcomplex-pcs-sentiment-scores';
 export const PCS_SENTIMENT_TRAINING_STATS_STORAGE_KEY = 'kcomplex-pcs-sentiment-training-stats';
+
+const SENTIMENT_MODEL_LEARNING_RATE = 0.001;
+
+function compileSentimentModel(model: tf.LayersModel) {
+    model.compile({
+        optimizer: tf.train.adam(SENTIMENT_MODEL_LEARNING_RATE),
+        loss: tf.losses.huberLoss,
+        metrics: ['mae'],
+    });
+}
+
+function encodeArrayBufferToBase64(buffer: ArrayBuffer): string {
+    if (typeof window === 'undefined' || typeof window.btoa !== 'function') {
+        throw new Error('Model serialization requires browser base64 support.');
+    }
+
+    const bytes = new Uint8Array(buffer);
+    const chunkSize = 0x8000;
+    let binary = '';
+
+    for (let index = 0; index < bytes.length; index += chunkSize) {
+        const chunk = bytes.subarray(index, index + chunkSize);
+        binary += String.fromCharCode(...chunk);
+    }
+
+    return window.btoa(binary);
+}
+
+function normalizeWeightData(weightData: tf.io.WeightData | undefined): ArrayBuffer {
+    if (!weightData) {
+        return new ArrayBuffer(0);
+    }
+
+    if (weightData instanceof ArrayBuffer) {
+        return weightData;
+    }
+
+    const totalBytes = weightData.reduce((sum, buffer) => sum + buffer.byteLength, 0);
+    const merged = new Uint8Array(totalBytes);
+    let offset = 0;
+
+    for (const buffer of weightData) {
+        merged.set(new Uint8Array(buffer), offset);
+        offset += buffer.byteLength;
+    }
+
+    return merged.buffer;
+}
+
+function decodeBase64ToArrayBuffer(encoded: string): ArrayBuffer {
+    if (typeof window === 'undefined' || typeof window.atob !== 'function') {
+        throw new Error('Model restoration requires browser base64 support.');
+    }
+
+    const binary = window.atob(encoded);
+    const bytes = new Uint8Array(binary.length);
+
+    for (let index = 0; index < binary.length; index += 1) {
+        bytes[index] = binary.charCodeAt(index);
+    }
+
+    return bytes.buffer;
+}
+
+function getModelInputSize(model: tf.LayersModel): number | null {
+    const maybeInputSize = model.inputs[0]?.shape?.[1];
+    return typeof maybeInputSize === 'number' ? maybeInputSize : null;
+}
+
+function getExpectedSentimentModelInputSize() {
+    return PITCH_CLASS_SET_NUMERICAL_FEATURE_HEADERS.length;
+}
+
+function isWeightSpec(value: unknown): value is tf.io.WeightsManifestEntry {
+    if (!value || typeof value !== 'object') return false;
+
+    const candidate = value as Record<string, unknown>;
+    return typeof candidate.name === 'string'
+        && Array.isArray(candidate.shape)
+        && typeof candidate.dtype === 'string';
+}
 
 function getSortedChords(): PCS12[] {
     return Array.from(PCS12.getChords())
@@ -104,11 +214,97 @@ function createSentimentModel(inputSize: number): tf.LayersModel {
         ],
     });
 
-    model.compile({
-        optimizer: tf.train.adam(0.001),
-        loss: tf.losses.huberLoss,
-        metrics: ['mae'],
+    compileSentimentModel(model);
+
+    return model;
+}
+
+export function getSentimentModelSettings(model: tf.LayersModel): SentimentModelSettings {
+    return {
+        inputSize: getModelInputSize(model),
+        optimizer: 'adam',
+        learningRate: SENTIMENT_MODEL_LEARNING_RATE,
+        loss: 'huberLoss',
+        outputActivation: 'tanh',
+        layers: model.layers.map(layer => ({
+            className: layer.getClassName(),
+            config: layer.getConfig() as Record<string, unknown>,
+        })),
+    };
+}
+
+export async function serializeSentimentModel(model: tf.LayersModel): Promise<SerializedSentimentModelArtifacts> {
+    await tf.ready();
+
+    const artifactHolder: { current: tf.io.ModelArtifacts | null } = { current: null };
+    await model.save(tf.io.withSaveHandler(async (artifacts: tf.io.ModelArtifacts) => {
+        artifactHolder.current = artifacts;
+        return {
+            modelArtifactsInfo: tf.io.getModelArtifactsInfoForJSON(artifacts),
+        };
+    }));
+
+    const modelArtifacts = artifactHolder.current;
+    if (!modelArtifacts || !modelArtifacts.modelTopology || !modelArtifacts.weightSpecs) {
+        throw new Error('Unable to serialize the trained neural-network weights.');
+    }
+
+    const inputSize = getModelInputSize(model);
+    const expectedInputSize = getExpectedSentimentModelInputSize();
+    if (inputSize !== null && inputSize !== expectedInputSize) {
+        throw new Error(`The loaded neural-network expects ${inputSize} features, but this build provides ${expectedInputSize}.`);
+    }
+
+    return {
+        format: modelArtifacts.format ?? null,
+        generatedBy: modelArtifacts.generatedBy ?? null,
+        convertedBy: modelArtifacts.convertedBy ?? null,
+        modelTopology: modelArtifacts.modelTopology as Record<string, unknown>,
+        weightSpecs: modelArtifacts.weightSpecs.map((spec: tf.io.WeightsManifestEntry) => ({ ...spec })),
+        weightDataBase64: encodeArrayBufferToBase64(normalizeWeightData(modelArtifacts.weightData)),
+        modelSettings: getSentimentModelSettings(model),
+    };
+}
+
+export async function restoreSerializedSentimentModel(serialized: SerializedSentimentModelArtifacts): Promise<tf.LayersModel> {
+    await tf.ready();
+
+    if (!serialized.modelTopology || typeof serialized.modelTopology !== 'object') {
+        throw new Error('The preset does not contain a valid neural-network topology.');
+    }
+
+    if (!Array.isArray(serialized.weightSpecs) || !serialized.weightSpecs.every(isWeightSpec)) {
+        throw new Error('The preset does not contain valid neural-network weight metadata.');
+    }
+
+    if (typeof serialized.weightDataBase64 !== 'string') {
+        throw new Error('The preset does not contain valid neural-network weight data.');
+    }
+
+    const expectedInputSize = getExpectedSentimentModelInputSize();
+    const configuredInputSize = serialized.modelSettings?.inputSize ?? null;
+    if (configuredInputSize !== null && configuredInputSize !== expectedInputSize) {
+        throw new Error(`The preset neural network expects ${configuredInputSize} features, but this build provides ${expectedInputSize}.`);
+    }
+
+    const model = await tf.loadLayersModel({
+        load: async () => ({
+            format: serialized.format ?? undefined,
+            generatedBy: serialized.generatedBy ?? undefined,
+            convertedBy: serialized.convertedBy ?? undefined,
+            modelTopology: serialized.modelTopology,
+            weightSpecs: serialized.weightSpecs,
+            weightData: decodeBase64ToArrayBuffer(serialized.weightDataBase64),
+        }),
     });
+
+    compileSentimentModel(model);
+
+    const restoredInputSize = getModelInputSize(model);
+    if (restoredInputSize !== null && restoredInputSize !== expectedInputSize) {
+        model.dispose();
+        throw new Error(`The restored neural network expects ${restoredInputSize} features, but this build provides ${expectedInputSize}.`);
+    }
 
     return model;
 }
@@ -281,6 +477,11 @@ export function saveSentimentTrainingStats(stats: SentimentTrainingStats) {
     window.localStorage.setItem(PCS_SENTIMENT_TRAINING_STATS_STORAGE_KEY, JSON.stringify(stats));
 }
 
+export function clearStoredSentimentTrainingStats() {
+    if (typeof window === 'undefined') return;
+    window.localStorage.removeItem(PCS_SENTIMENT_TRAINING_STATS_STORAGE_KEY);
+}
+
 export async function clearStoredSentimentModel() {
     if (typeof window === 'undefined') return;
 
@@ -311,11 +512,7 @@ export async function loadStoredSentimentModel(): Promise<tf.LayersModel | null>
         }
 
         const model = await tf.loadLayersModel(PCS_SENTIMENT_MODEL_STORAGE_URL);
-        model.compile({
-            optimizer: tf.train.adam(0.001),
-            loss: tf.losses.huberLoss,
-            metrics: ['mae'],
-        });
+        compileSentimentModel(model);
         return model;
     } catch (error) {
         console.error('Unable to load the stored sentiment model.', error);
@@ -356,11 +553,7 @@ export async function importSentimentModel(files: File[], sentiments: SentimentM
     }
 
     const model = await tf.loadLayersModel(tf.io.browserFiles([jsonFile, ...weightFiles]));
-    model.compile({
-        optimizer: tf.train.adam(0.001),
-        loss: tf.losses.huberLoss,
-        metrics: ['mae'],
-    });
+    compileSentimentModel(model);
 
     const evaluation = await evaluateModel(model, sentiments);
     await saveSentimentModel(model);
@@ -386,7 +579,7 @@ export async function trainSentimentModel(
         throw new Error('Label at least one pitch-class set before training the neural network.');
     }
 
-    const totalEpochs = 400;
+    const totalEpochs = 300;
     const batchSize = trainingDataset.targets.length < 8
         ? trainingDataset.targets.length
         : Math.min(32, Math.max(8, Math.floor(trainingDataset.targets.length / 6)));
@@ -404,7 +597,7 @@ export async function trainSentimentModel(
             callbacks: [
                 tf.callbacks.earlyStopping({
                     monitor: 'loss',
-                    patience: 150,
+                    patience: 30,
                 }),
                 new tf.CustomCallback({
                     onEpochEnd: async (epoch, logs) => {

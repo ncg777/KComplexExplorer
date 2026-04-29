@@ -8,18 +8,38 @@ import ChordListItem, { ChordDetails } from './ChordListItem';
 import { getIntervalVectorEntropyMetrics } from './intervalVectorEntropy';
 import { buildPitchClassSetSentimentCsv, loadSentiments, saveSentiments, SentimentValue } from './pcsSentiment';
 import {
+    clearStoredSentimentModel,
+    clearStoredSentimentTrainingStats,
     evaluateSentimentModel,
-    exportSentimentModel,
-    importSentimentModel,
     loadStoredSentimentModel,
     loadStoredSentimentPredictions,
     loadStoredSentimentScores,
     loadStoredSentimentTrainingStats,
+    restoreSerializedSentimentModel,
+    saveSentimentModel,
+    saveSentimentPredictions,
+    saveSentimentScores,
+    saveSentimentTrainingStats,
+    serializeSentimentModel,
     SentimentPredictionMap,
     SentimentScoreMap,
     SentimentTrainingStats,
     trainSentimentModel,
 } from './pcsSentimentModel';
+import {
+    createSentimentPresetRecord,
+    deleteSentimentPresetRecord,
+    exportSentimentPresetFile,
+    getSentimentPresetDownloadName,
+    importSentimentPresetFile,
+    listSentimentPresetSummaries,
+    loadSentimentPresetRecord,
+    renameSentimentPresetRecord,
+    saveSentimentPresetRecord,
+    SentimentPresetRecord,
+    SentimentPresetSnapshot,
+    SentimentPresetSummary,
+} from './sentimentPresets';
 import {
     generateRandomPitchClassMatrix,
     RandomPitchClassMatrixSearchCancelledError,
@@ -58,6 +78,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const [activeSubset, setActiveSubset] = useState<string | null>(null);
     const [showPcs12Modal, setShowPcs12Modal] = useState(false);
     const [showHelpModal, setShowHelpModal] = useState(false);
+    const [showPresetModal, setShowPresetModal] = useState(false);
 
     // Search states
     const [pcsSearch, setPcsSearch] = useState('');
@@ -80,6 +101,10 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const [hasStoredModel, setHasStoredModel] = useState(false);
     const [trainingOverlay, setTrainingOverlay] = useState<TrainingOverlayState>({ isBusy: false, progress: 0, message: '' });
     const [modelFeedback, setModelFeedback] = useState<string>('');
+    const [presetSummaries, setPresetSummaries] = useState<SentimentPresetSummary[]>([]);
+    const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
+    const [presetNameDraft, setPresetNameDraft] = useState('');
+    const [isPresetBusy, setIsPresetBusy] = useState(false);
     const [matrixSearchState, setMatrixSearchState] = useState<MatrixSearchState>({ isSearching: false, progress: 0, message: '' });
     const [matrixRowCount, setMatrixRowCount] = useState(3);
     const [matrixColumnCount, setMatrixColumnCount] = useState(4);
@@ -89,7 +114,8 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const [matrixOutput, setMatrixOutput] = useState('');
     const modelRef = useRef<tf.LayersModel | null>(null);
     const trainingStatsRef = useRef<SentimentTrainingStats | null>(trainingStats);
-    const importWeightsInputRef = useRef<HTMLInputElement>(null);
+    const importPresetInputRef = useRef<HTMLInputElement>(null);
+    const skipSentimentRefreshRef = useRef(false);
     const cancelMatrixSearchRef = useRef(false);
 
     // Create refs for your lists
@@ -118,6 +144,10 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         subsets.filter(c => matchesSearch(c, subsetSearch)),
         [subsets, subsetSearch, matchesSearch]
     );
+
+    const selectedPresetSummary = useMemo(() => (
+        presetSummaries.find(preset => preset.id === selectedPresetId) ?? null
+    ), [presetSummaries, selectedPresetId]);
 
     const updateLoadedModel = useCallback((nextModel: tf.LayersModel | null) => {
         if (modelRef.current && modelRef.current !== nextModel) {
@@ -245,6 +275,11 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     }, [trainingStats]);
 
     useEffect(() => {
+        if (skipSentimentRefreshRef.current) {
+            skipSentimentRefreshRef.current = false;
+            return;
+        }
+
         if (!modelRef.current) return;
 
         let cancelled = false;
@@ -438,6 +473,298 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         }, 100);
     }, [sentiments]);
 
+    const refreshPresetSummaries = useCallback(async () => {
+        const summaries = await listSentimentPresetSummaries();
+        setPresetSummaries(summaries);
+        setSelectedPresetId(currentId => {
+            if (!currentId) {
+                return summaries[0]?.id ?? null;
+            }
+
+            return summaries.some(summary => summary.id === currentId)
+                ? currentId
+                : summaries[0]?.id ?? null;
+        });
+        setPresetNameDraft(currentName => currentName || summaries[0]?.name || '');
+        return summaries;
+    }, []);
+
+    useEffect(() => {
+        refreshPresetSummaries().catch(error => {
+            console.error('Unable to initialize the saved preset list.', error);
+        });
+    }, [refreshPresetSummaries]);
+
+    const buildCurrentPresetSnapshot = useCallback(async (): Promise<SentimentPresetSnapshot> => {
+        const serializedModel = modelRef.current ? await serializeSentimentModel(modelRef.current) : null;
+        return {
+            sentiments: { ...sentiments },
+            predictedSentiments: serializedModel ? { ...predictedSentiments } : {},
+            predictedSentimentScores: serializedModel ? { ...predictedSentimentScores } : {},
+            trainingStats: serializedModel && trainingStats ? { ...trainingStats } : null,
+            serializedModel,
+        };
+    }, [predictedSentimentScores, predictedSentiments, sentiments, trainingStats]);
+
+    const downloadTextFile = useCallback((text: string, fileName: string, contentType: string) => {
+        const blob = new Blob([text], { type: contentType });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = fileName;
+        document.body.appendChild(anchor);
+        anchor.click();
+        window.setTimeout(() => {
+            document.body.removeChild(anchor);
+            URL.revokeObjectURL(url);
+        }, 100);
+    }, []);
+
+    const applyPresetRecord = useCallback(async (record: SentimentPresetRecord) => {
+        const snapshot = record.snapshot;
+        const nextModel = snapshot.serializedModel
+            ? await restoreSerializedSentimentModel(snapshot.serializedModel)
+            : null;
+
+        skipSentimentRefreshRef.current = true;
+        updateLoadedModel(nextModel);
+        setSentiments({ ...snapshot.sentiments });
+        setPredictedSentiments({ ...snapshot.predictedSentiments });
+        setPredictedSentimentScores({ ...snapshot.predictedSentimentScores });
+        setTrainingStats(snapshot.trainingStats ? { ...snapshot.trainingStats } : null);
+
+        saveSentiments(snapshot.sentiments);
+        saveSentimentPredictions(snapshot.predictedSentiments);
+        saveSentimentScores(snapshot.predictedSentimentScores);
+
+        if (snapshot.trainingStats) {
+            saveSentimentTrainingStats(snapshot.trainingStats);
+        } else {
+            clearStoredSentimentTrainingStats();
+        }
+
+        if (nextModel) {
+            await saveSentimentModel(nextModel);
+        } else {
+            await clearStoredSentimentModel();
+        }
+    }, [updateLoadedModel]);
+
+    const openPresetManager = useCallback(async () => {
+        setModelFeedback('');
+        setShowPresetModal(true);
+        try {
+            await refreshPresetSummaries();
+        } catch (error) {
+            console.error('Unable to load the saved preset list.', error);
+            setModelFeedback(error instanceof Error ? error.message : 'Unable to load the saved preset list.');
+        }
+    }, [refreshPresetSummaries]);
+
+    const handleSavePreset = useCallback(async () => {
+        const name = presetNameDraft.trim();
+        if (!name) {
+            setModelFeedback('Enter a preset name before saving.');
+            return;
+        }
+
+        setIsPresetBusy(true);
+        setModelFeedback('');
+
+        try {
+            const snapshot = await buildCurrentPresetSnapshot();
+            const record = createSentimentPresetRecord({ name, snapshot });
+            const saved = await saveSentimentPresetRecord(record);
+            const summaries = await refreshPresetSummaries();
+            setSelectedPresetId(saved.id);
+            setPresetNameDraft(saved.name);
+            setModelFeedback(`Saved preset "${saved.name}".`);
+            if (summaries.length === 1) {
+                setSelectedPresetId(saved.id);
+            }
+        } catch (error) {
+            console.error('Unable to save the current preset.', error);
+            setModelFeedback(error instanceof Error ? error.message : 'Unable to save the current preset.');
+        } finally {
+            setIsPresetBusy(false);
+        }
+    }, [buildCurrentPresetSnapshot, presetNameDraft, refreshPresetSummaries]);
+
+    const handleOverwriteSelectedPreset = useCallback(async () => {
+        if (!selectedPresetId) {
+            setModelFeedback('Select a preset before overwriting it.');
+            return;
+        }
+
+        setIsPresetBusy(true);
+        setModelFeedback('');
+
+        try {
+            const existing = await loadSentimentPresetRecord(selectedPresetId);
+            if (!existing) {
+                throw new Error('The selected preset could not be found.');
+            }
+
+            const snapshot = await buildCurrentPresetSnapshot();
+            const saved = await saveSentimentPresetRecord({
+                ...existing,
+                name: presetNameDraft.trim() || existing.name,
+                snapshot,
+            });
+            await refreshPresetSummaries();
+            setSelectedPresetId(saved.id);
+            setPresetNameDraft(saved.name);
+            setModelFeedback(`Updated preset "${saved.name}".`);
+        } catch (error) {
+            console.error('Unable to overwrite the selected preset.', error);
+            setModelFeedback(error instanceof Error ? error.message : 'Unable to overwrite the selected preset.');
+        } finally {
+            setIsPresetBusy(false);
+        }
+    }, [buildCurrentPresetSnapshot, presetNameDraft, refreshPresetSummaries, selectedPresetId]);
+
+    const handleLoadSelectedPreset = useCallback(async () => {
+        if (!selectedPresetId) {
+            setModelFeedback('Select a preset before loading it.');
+            return;
+        }
+
+        setIsPresetBusy(true);
+        setModelFeedback('');
+
+        try {
+            const record = await loadSentimentPresetRecord(selectedPresetId);
+            if (!record) {
+                throw new Error('The selected preset could not be found.');
+            }
+
+            await applyPresetRecord(record);
+            setPresetNameDraft(record.name);
+            setModelFeedback(`Loaded preset "${record.name}".`);
+        } catch (error) {
+            console.error('Unable to load the selected preset.', error);
+            setModelFeedback(error instanceof Error ? error.message : 'Unable to load the selected preset.');
+        } finally {
+            setIsPresetBusy(false);
+        }
+    }, [applyPresetRecord, selectedPresetId]);
+
+    const handleRenameSelectedPreset = useCallback(async () => {
+        if (!selectedPresetId) {
+            setModelFeedback('Select a preset before renaming it.');
+            return;
+        }
+
+        const nextName = presetNameDraft.trim();
+        if (!nextName) {
+            setModelFeedback('Enter a preset name before renaming it.');
+            return;
+        }
+
+        setIsPresetBusy(true);
+        setModelFeedback('');
+
+        try {
+            const renamed = await renameSentimentPresetRecord(selectedPresetId, nextName);
+            await refreshPresetSummaries();
+            setSelectedPresetId(renamed.id);
+            setPresetNameDraft(renamed.name);
+            setModelFeedback(`Renamed preset to "${renamed.name}".`);
+        } catch (error) {
+            console.error('Unable to rename the selected preset.', error);
+            setModelFeedback(error instanceof Error ? error.message : 'Unable to rename the selected preset.');
+        } finally {
+            setIsPresetBusy(false);
+        }
+    }, [presetNameDraft, refreshPresetSummaries, selectedPresetId]);
+
+    const handleDeleteSelectedPreset = useCallback(async () => {
+        if (!selectedPresetId || !selectedPresetSummary) {
+            setModelFeedback('Select a preset before deleting it.');
+            return;
+        }
+
+        if (!window.confirm(`Delete preset "${selectedPresetSummary.name}"?`)) {
+            return;
+        }
+
+        setIsPresetBusy(true);
+        setModelFeedback('');
+
+        try {
+            await deleteSentimentPresetRecord(selectedPresetId);
+            const summaries = await refreshPresetSummaries();
+            const nextSummary = summaries[0] ?? null;
+            setSelectedPresetId(nextSummary?.id ?? null);
+            setPresetNameDraft(nextSummary?.name ?? '');
+            setModelFeedback(`Deleted preset "${selectedPresetSummary.name}".`);
+        } catch (error) {
+            console.error('Unable to delete the selected preset.', error);
+            setModelFeedback(error instanceof Error ? error.message : 'Unable to delete the selected preset.');
+        } finally {
+            setIsPresetBusy(false);
+        }
+    }, [refreshPresetSummaries, selectedPresetId, selectedPresetSummary]);
+
+    const handleExportSelectedPreset = useCallback(async () => {
+        if (!selectedPresetId) {
+            setModelFeedback('Select a preset before exporting it.');
+            return;
+        }
+
+        setIsPresetBusy(true);
+        setModelFeedback('');
+
+        try {
+            const record = await loadSentimentPresetRecord(selectedPresetId);
+            if (!record) {
+                throw new Error('The selected preset could not be found.');
+            }
+
+            const fileText = exportSentimentPresetFile(record);
+            downloadTextFile(fileText, getSentimentPresetDownloadName(record.name), 'application/json;charset=utf-8');
+            setModelFeedback(`Exported preset "${record.name}".`);
+        } catch (error) {
+            console.error('Unable to export the selected preset.', error);
+            setModelFeedback(error instanceof Error ? error.message : 'Unable to export the selected preset.');
+        } finally {
+            setIsPresetBusy(false);
+        }
+    }, [downloadTextFile, selectedPresetId]);
+
+    const handleImportPresetClick = useCallback(() => {
+        importPresetInputRef.current?.click();
+    }, []);
+
+    const handleImportPreset = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0] ?? null;
+        event.target.value = '';
+
+        if (!file) {
+            return;
+        }
+
+        setIsPresetBusy(true);
+        setModelFeedback('');
+
+        try {
+            const rawText = await file.text();
+            const importedRecord = importSentimentPresetFile(rawText);
+            const savedRecord = await saveSentimentPresetRecord(importedRecord);
+            await applyPresetRecord(savedRecord);
+            await refreshPresetSummaries();
+            setSelectedPresetId(savedRecord.id);
+            setPresetNameDraft(savedRecord.name);
+            setShowPresetModal(true);
+            setModelFeedback(`Imported and loaded preset "${savedRecord.name}".`);
+        } catch (error) {
+            console.error('Unable to import the preset file.', error);
+            setModelFeedback(error instanceof Error ? error.message : 'Unable to import the preset file.');
+        } finally {
+            setIsPresetBusy(false);
+        }
+    }, [applyPresetRecord, refreshPresetSummaries]);
+
     const handleTrainNeuralNetwork = useCallback(async () => {
         setModelFeedback('');
         setTrainingOverlay({
@@ -470,61 +797,6 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         } catch (error) {
             console.error('Unable to train the sentiment neural network.', error);
             setModelFeedback(error instanceof Error ? error.message : 'Unable to train the neural network.');
-        } finally {
-            window.setTimeout(() => {
-                setTrainingOverlay({ isBusy: false, progress: 0, message: '' });
-            }, 250);
-        }
-    }, [sentiments, updateLoadedModel]);
-
-    const handleExportWeights = useCallback(async () => {
-        if (!modelRef.current) return;
-
-        setModelFeedback('');
-
-        try {
-            await exportSentimentModel(modelRef.current);
-            setModelFeedback('Exported the current neural-network weights.');
-        } catch (error) {
-            console.error('Unable to export the sentiment model.', error);
-            setModelFeedback('Unable to export the neural-network weights.');
-        }
-    }, []);
-
-    const handleImportWeightsClick = useCallback(() => {
-        importWeightsInputRef.current?.click();
-    }, []);
-
-    const handleImportWeights = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const files = Array.from(event.target.files ?? []);
-        event.target.value = '';
-
-        if (files.length === 0) {
-            return;
-        }
-
-        setModelFeedback('');
-        setTrainingOverlay({
-            isBusy: true,
-            progress: 20,
-            message: 'Importing neural-network weights...',
-        });
-
-        try {
-            const result = await importSentimentModel(files, sentiments);
-            updateLoadedModel(result.model);
-            setPredictedSentiments(result.predictions);
-            setPredictedSentimentScores(result.scores);
-            setTrainingStats(result.stats);
-            setModelFeedback('Imported neural-network weights and refreshed predictions.');
-            setTrainingOverlay({
-                isBusy: true,
-                progress: 100,
-                message: 'Refreshing predicted sentiments...',
-            });
-        } catch (error) {
-            console.error('Unable to import the sentiment model.', error);
-            setModelFeedback(error instanceof Error ? error.message : 'Unable to import the neural-network weights.');
         } finally {
             window.setTimeout(() => {
                 setTrainingOverlay({ isBusy: false, progress: 0, message: '' });
@@ -665,7 +937,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         setChordSorterResult(chords.map(c => c.toString()).join(' '));
     }, [chordSorterText, chordSorterRotate]);
 
-    const isBusy = trainingOverlay.isBusy || matrixSearchState.isSearching;
+    const isBusy = trainingOverlay.isBusy || matrixSearchState.isSearching || isPresetBusy;
     const activeOverlay = trainingOverlay.isBusy
         ? { progress: trainingOverlay.progress, message: trainingOverlay.message, canCancel: false }
         : matrixSearchState.isSearching
@@ -961,6 +1233,20 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
             <div className="sentiment-tools">
                 <div className="sentiment-tool-buttons">
                     <Button
+                        variant="outline-light"
+                        onClick={openPresetManager}
+                        disabled={isBusy}
+                    >
+                        Presets
+                    </Button>
+                    <Button
+                        variant="outline-light"
+                        onClick={handleImportPresetClick}
+                        disabled={isBusy}
+                    >
+                        Import Preset
+                    </Button>
+                    <Button
                         variant="primary"
                         onClick={handleTrainNeuralNetwork}
                         disabled={isBusy}
@@ -973,31 +1259,17 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                     >
                         Export CSV
                     </Button>
-                    <Button
-                        variant="outline-info"
-                        onClick={handleExportWeights}
-                        disabled={!hasStoredModel || isBusy}
-                    >
-                        Export Weights
-                    </Button>
-                    <Button
-                        variant="outline-info"
-                        onClick={handleImportWeightsClick}
-                        disabled={isBusy}
-                    >
-                        Import Weights
-                    </Button>
                     <input
-                        ref={importWeightsInputRef}
+                        ref={importPresetInputRef}
                         type="file"
-                        accept=".json,.bin,application/json,application/octet-stream"
-                        multiple
-                        onChange={handleImportWeights}
+                        accept=".json,application/json"
+                        onChange={handleImportPreset}
                         style={{ display: 'none' }}
                     />
                 </div>
                 <div className="sentiment-tool-stats">
                     <div><strong>Model:</strong> {hasStoredModel ? 'Loaded' : 'Not loaded'}</div>
+                    <div><strong>Presets:</strong> {presetSummaries.length}</div>
                     <div><strong>Accuracy:</strong> {trainingStats?.accuracy !== null && trainingStats?.accuracy !== undefined ? `${(trainingStats.accuracy * 100).toFixed(1)}%` : '—'}</div>
                     <div><strong>MAE:</strong> {trainingStats?.meanAbsoluteError !== null && trainingStats?.meanAbsoluteError !== undefined ? trainingStats.meanAbsoluteError.toFixed(3) : '—'}</div>
                     <div><strong>Epochs:</strong> {trainingStats?.epochsCompleted ?? '—'}</div>
@@ -1094,6 +1366,85 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                     />
                 </div>
             )}
+            <Modal show={showPresetModal} onHide={() => setShowPresetModal(false)} size="lg">
+                <Modal.Header closeButton>
+                    <Modal.Title>Sentiment Presets</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <div className="preset-toolbar">
+                        <Form.Group controlId="presetNameDraft" className="preset-name-field">
+                            <Form.Label>Preset Name</Form.Label>
+                            <Form.Control
+                                type="text"
+                                value={presetNameDraft}
+                                onChange={(event) => setPresetNameDraft(event.target.value)}
+                                placeholder="Enter a preset name"
+                                disabled={isBusy}
+                            />
+                        </Form.Group>
+                        <div className="preset-toolbar-actions">
+                            <Button variant="primary" onClick={handleSavePreset} disabled={isBusy}>
+                                Save Current As
+                            </Button>
+                            <Button variant="outline-primary" onClick={handleOverwriteSelectedPreset} disabled={isBusy || !selectedPresetId}>
+                                Overwrite Selected
+                            </Button>
+                            <Button variant="outline-success" onClick={handleLoadSelectedPreset} disabled={isBusy || !selectedPresetId}>
+                                Load Selected
+                            </Button>
+                        </div>
+                    </div>
+                    <div className="preset-toolbar preset-toolbar-secondary">
+                        <div className="preset-toolbar-actions">
+                            <Button variant="outline-light" onClick={handleRenameSelectedPreset} disabled={isBusy || !selectedPresetId}>
+                                Rename Selected
+                            </Button>
+                            <Button variant="outline-info" onClick={handleExportSelectedPreset} disabled={isBusy || !selectedPresetId}>
+                                Export Selected
+                            </Button>
+                            <Button variant="outline-danger" onClick={handleDeleteSelectedPreset} disabled={isBusy || !selectedPresetId}>
+                                Delete Selected
+                            </Button>
+                        </div>
+                    </div>
+                    <div className="preset-list">
+                        {presetSummaries.length === 0 ? (
+                            <div className="preset-empty-state">
+                                No saved presets yet. Save the current workspace to create one.
+                            </div>
+                        ) : (
+                            presetSummaries.map((preset) => {
+                                const isSelected = preset.id === selectedPresetId;
+                                return (
+                                    <button
+                                        key={preset.id}
+                                        type="button"
+                                        className={`preset-list-item${isSelected ? ' preset-list-item-selected' : ''}`}
+                                        onClick={() => {
+                                            setSelectedPresetId(preset.id);
+                                            setPresetNameDraft(preset.name);
+                                        }}
+                                    >
+                                        <div className="preset-list-item-header">
+                                            <strong>{preset.name}</strong>
+                                            <span>{preset.hasModel ? 'Model included' : 'No model'}</span>
+                                        </div>
+                                        <div className="preset-list-item-meta">
+                                            <span>{preset.labeledSentimentCount} labeled sentiments</span>
+                                            <span>Updated {new Date(preset.updatedAt).toLocaleString()}</span>
+                                        </div>
+                                    </button>
+                                );
+                            })
+                        )}
+                    </div>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowPresetModal(false)}>
+                        Close
+                    </Button>
+                </Modal.Footer>
+            </Modal>
             {modelFeedback && (
                 <Alert variant="info" className="sentiment-model-alert">
                     {modelFeedback}
@@ -1147,9 +1498,10 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                         ternary predictions are saved locally along with the trained weights.
                     </p>
                     <p>
-                        Use <strong>Export Weights</strong> and <strong>Import Weights</strong> to move the trained
-                        TensorFlow model between devices. Once weights are available, each pitch-class-set popover also
-                        shows its <strong>Predicted sentiment</strong>.
+                        Use <strong>Presets</strong> to save the current sentiment workspace under a name. Presets now
+                        capture manual sentiments, saved predictions, training statistics, and the trained neural-network
+                        weights when a model is loaded. Use <strong>Import Preset</strong> to restore a full workspace
+                        from a JSON preset file.
                     </p>
                     <p>
                         Once a model is loaded, the <strong>Constrained matrix generator</strong> can randomly
