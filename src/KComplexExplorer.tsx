@@ -506,6 +506,14 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         };
     }, [predictedSentimentScores, predictedSentiments, sentiments, trainingStats]);
 
+    const createEmptyPresetSnapshot = useCallback((): SentimentPresetSnapshot => ({
+        sentiments: {},
+        predictedSentiments: {},
+        predictedSentimentScores: {},
+        trainingStats: null,
+        serializedModel: null,
+    }), []);
+
     const downloadTextFile = useCallback((text: string, fileName: string, contentType: string) => {
         const blob = new Blob([text], { type: contentType });
         const url = URL.createObjectURL(blob);
@@ -764,6 +772,65 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
             setIsPresetBusy(false);
         }
     }, [applyPresetRecord, refreshPresetSummaries]);
+
+    const handleClearCurrentWorkspace = useCallback(async () => {
+        if (!window.confirm('Clear the current sentiments, predictions, and loaded model?')) {
+            return;
+        }
+
+        setIsPresetBusy(true);
+        setModelFeedback('');
+
+        try {
+            const clearedRecord = createSentimentPresetRecord({
+                name: 'Cleared Workspace',
+                snapshot: createEmptyPresetSnapshot(),
+            });
+            await applyPresetRecord(clearedRecord);
+            setModelFeedback('Cleared the current sentiment workspace.');
+        } catch (error) {
+            console.error('Unable to clear the current sentiment workspace.', error);
+            setModelFeedback(error instanceof Error ? error.message : 'Unable to clear the current sentiment workspace.');
+        } finally {
+            setIsPresetBusy(false);
+        }
+    }, [applyPresetRecord, createEmptyPresetSnapshot]);
+
+    const handleResetSelectedPreset = useCallback(async () => {
+        if (!selectedPresetId || !selectedPresetSummary) {
+            setModelFeedback('Select a preset before resetting it.');
+            return;
+        }
+
+        if (!window.confirm(`Reset preset "${selectedPresetSummary.name}" to an empty workspace?`)) {
+            return;
+        }
+
+        setIsPresetBusy(true);
+        setModelFeedback('');
+
+        try {
+            const existing = await loadSentimentPresetRecord(selectedPresetId);
+            if (!existing) {
+                throw new Error('The selected preset could not be found.');
+            }
+
+            const resetRecord = await saveSentimentPresetRecord({
+                ...existing,
+                snapshot: createEmptyPresetSnapshot(),
+            });
+            await applyPresetRecord(resetRecord);
+            await refreshPresetSummaries();
+            setSelectedPresetId(resetRecord.id);
+            setPresetNameDraft(resetRecord.name);
+            setModelFeedback(`Reset preset "${resetRecord.name}" and cleared the current workspace.`);
+        } catch (error) {
+            console.error('Unable to reset the selected preset.', error);
+            setModelFeedback(error instanceof Error ? error.message : 'Unable to reset the selected preset.');
+        } finally {
+            setIsPresetBusy(false);
+        }
+    }, [applyPresetRecord, createEmptyPresetSnapshot, refreshPresetSummaries, selectedPresetId, selectedPresetSummary]);
 
     const handleTrainNeuralNetwork = useCallback(async () => {
         setModelFeedback('');
@@ -1399,6 +1466,12 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                             <Button variant="outline-light" onClick={handleRenameSelectedPreset} disabled={isBusy || !selectedPresetId}>
                                 Rename Selected
                             </Button>
+                            <Button variant="outline-warning" onClick={handleClearCurrentWorkspace} disabled={isBusy}>
+                                Clear Current
+                            </Button>
+                            <Button variant="warning" onClick={handleResetSelectedPreset} disabled={isBusy || !selectedPresetId}>
+                                Reset Selected
+                            </Button>
                             <Button variant="outline-info" onClick={handleExportSelectedPreset} disabled={isBusy || !selectedPresetId}>
                                 Export Selected
                             </Button>
@@ -1501,7 +1574,8 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                         Use <strong>Presets</strong> to save the current sentiment workspace under a name. Presets now
                         capture manual sentiments, saved predictions, training statistics, and the trained neural-network
                         weights when a model is loaded. Use <strong>Import Preset</strong> to restore a full workspace
-                        from a JSON preset file.
+                        from a JSON preset file, <strong>Clear Current</strong> to wipe the active workspace, and
+                        <strong> Reset Selected</strong> to replace a stored preset with an empty workspace.
                     </p>
                     <p>
                         Once a model is loaded, the <strong>Constrained matrix generator</strong> can randomly
