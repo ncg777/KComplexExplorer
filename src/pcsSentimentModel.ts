@@ -63,6 +63,8 @@ export const PCS_SENTIMENT_SCORES_STORAGE_KEY = 'kcomplex-pcs-sentiment-scores';
 export const PCS_SENTIMENT_TRAINING_STATS_STORAGE_KEY = 'kcomplex-pcs-sentiment-training-stats';
 
 const SENTIMENT_MODEL_LEARNING_RATE = 0.001;
+const SENTIMENT_MODEL_EARLY_STOPPING_PATIENCE = 12;
+const SENTIMENT_MODEL_EARLY_STOPPING_MIN_DELTA = 1e-4;
 
 function compileSentimentModel(model: tf.LayersModel) {
     model.compile({
@@ -201,11 +203,7 @@ function createSentimentModel(inputSize: number): tf.LayersModel {
             tf.layers.dense({
                 inputShape: [inputSize],
                 units: hiddenUnits,
-                activation: 'relu',
-            }),
-            tf.layers.dense({
-                units: hiddenUnits,
-                activation: 'relu',
+                activation: 'tanh',
             }),
             tf.layers.dense({
                 units: 1,
@@ -597,7 +595,9 @@ export async function trainSentimentModel(
             callbacks: [
                 tf.callbacks.earlyStopping({
                     monitor: 'loss',
-                    patience: 30,
+                    mode: 'min',
+                    patience: SENTIMENT_MODEL_EARLY_STOPPING_PATIENCE,
+                    minDelta: SENTIMENT_MODEL_EARLY_STOPPING_MIN_DELTA,
                 }),
                 new tf.CustomCallback({
                     onEpochEnd: async (epoch, logs) => {
