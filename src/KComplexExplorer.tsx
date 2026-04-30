@@ -94,6 +94,14 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const [showZModal, setShowZModal] = useState(false);
     const [zModalChord, setZModalChord] = useState<PCS12 | null>(null);
     const [zMates, setZMates] = useState<PCS12[]>([]);
+
+    // Batch sentiment modal
+    type BatchFilterMode = 'bySize' | 'byForteClass' | 'visible';
+    const [showBatchModal, setShowBatchModal] = useState(false);
+    const [batchFilterMode, setBatchFilterMode] = useState<BatchFilterMode>('bySize');
+    const [batchSizeValue, setBatchSizeValue] = useState(7);
+    const [batchForteClass, setBatchForteClass] = useState('');
+    const [batchSentimentValue, setBatchSentimentValue] = useState<SentimentValue>(1);
     const [sentiments, setSentiments] = useState(() => loadSentiments());
     const [predictedSentiments, setPredictedSentiments] = useState<SentimentPredictionMap>(() => loadStoredSentimentPredictions());
     const [predictedSentimentScores, setPredictedSentimentScores] = useState<SentimentScoreMap>(() => loadStoredSentimentScores());
@@ -457,6 +465,37 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
             [forte]: prev[forte] === sentiment ? null : sentiment,
         }));
     }, []);
+
+    const getForteBaseClass = useCallback((forteStr: string): string => {
+        const dotIndex = forteStr.indexOf('.');
+        return dotIndex === -1 ? forteStr : forteStr.slice(0, dotIndex);
+    }, []);
+
+    const batchTargetChords = useMemo((): PCS12[] => {
+        const allChords = Array.from(PCS12.getChords());
+        if (batchFilterMode === 'bySize') {
+            return allChords.filter(c => c.getK() === batchSizeValue);
+        }
+        if (batchFilterMode === 'byForteClass') {
+            const target = batchForteClass.trim();
+            if (!target) return [];
+            return allChords.filter(c => getForteBaseClass(c.toString()) === target);
+        }
+        // 'visible' - matches currently visible main list
+        return filteredPcs;
+    }, [batchFilterMode, batchSizeValue, batchForteClass, filteredPcs, getForteBaseClass]);
+
+    const applyBatchSentiment = useCallback(() => {
+        if (batchTargetChords.length === 0) return;
+        setSentiments(prev => {
+            const next = { ...prev };
+            for (const chord of batchTargetChords) {
+                next[chord.toString()] = batchSentimentValue;
+            }
+            return next;
+        });
+        setShowBatchModal(false);
+    }, [batchTargetChords, batchSentimentValue]);
 
     const exportSentimentsToCsv = useCallback(() => {
         const csv = buildPitchClassSetSentimentCsv(sentiments);
@@ -1326,6 +1365,13 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                     >
                         Export CSV
                     </Button>
+                    <Button
+                        variant="outline-warning"
+                        onClick={() => setShowBatchModal(true)}
+                        disabled={isBusy}
+                    >
+                        Batch Sentiment
+                    </Button>
                     <input
                         ref={importPresetInputRef}
                         type="file"
@@ -1564,6 +1610,13 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                         (neutral), and <strong>-1</strong> (dislike). Use <strong>Export CSV</strong> to download every
                         known pitch class set with its current sentiment and analysis data for later modeling.
                     </p>
+                    <h6>Batch Sentiment:</h6>
+                    <p>
+                        Use <strong>Batch Sentiment</strong> to label many sets at once. You can filter by size (e.g.
+                        dislike all sets of size 10), by Forte class (e.g. like all transpositions of 7-35), or by the
+                        sets currently visible in the main list. Choose the desired sentiment (+1, 0, −1, or Clear) and
+                        click <strong>Apply</strong>.
+                    </p>
                     <h6>Neural-network sentiment prediction:</h6>
                     <p>
                         Use <strong>Train NN</strong> to train a TensorFlow neural network on all exported numerical
@@ -1651,6 +1704,82 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                 </Modal.Body>
                 <Modal.Footer>
                     <Button variant="secondary" onClick={() => setShowZModal(false)}>Close</Button>
+                </Modal.Footer>
+            </Modal>
+            {/* Batch Sentiment Modal */}
+            <Modal show={showBatchModal} onHide={() => setShowBatchModal(false)}>
+                <Modal.Header closeButton>
+                    <Modal.Title>Batch Sentiment</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <Form.Group controlId="batchFilterMode" className="mb-3">
+                        <Form.Label><strong>Filter</strong></Form.Label>
+                        <Form.Select
+                            value={batchFilterMode}
+                            onChange={e => setBatchFilterMode(e.target.value as 'bySize' | 'byForteClass' | 'visible')}
+                        >
+                            <option value="bySize">By size (number of notes)</option>
+                            <option value="byForteClass">By Forte class (all transpositions)</option>
+                            <option value="visible">Currently visible sets</option>
+                        </Form.Select>
+                    </Form.Group>
+                    {batchFilterMode === 'bySize' && (
+                        <Form.Group controlId="batchSizeValue" className="mb-3">
+                            <Form.Label>Number of notes</Form.Label>
+                            <Form.Control
+                                type="number"
+                                min={1}
+                                max={12}
+                                value={batchSizeValue}
+                                onChange={e => setBatchSizeValue(Math.min(12, Math.max(1, parseInt(e.target.value, 10) || 1)))}
+                            />
+                        </Form.Group>
+                    )}
+                    {batchFilterMode === 'byForteClass' && (
+                        <Form.Group controlId="batchForteClass" className="mb-3">
+                            <Form.Label>Forte class (e.g. 7-35)</Form.Label>
+                            <Form.Control
+                                type="text"
+                                placeholder="e.g. 7-35"
+                                value={batchForteClass}
+                                onChange={e => setBatchForteClass(e.target.value)}
+                            />
+                        </Form.Group>
+                    )}
+                    <Form.Group controlId="batchSentimentValue" className="mb-3">
+                        <Form.Label><strong>Sentiment</strong></Form.Label>
+                        <div className="d-flex gap-2">
+                            <Button
+                                variant={batchSentimentValue === 1 ? 'success' : 'outline-success'}
+                                onClick={() => setBatchSentimentValue(1)}
+                            >+1 Like</Button>
+                            <Button
+                                variant={batchSentimentValue === 0 ? 'warning' : 'outline-warning'}
+                                onClick={() => setBatchSentimentValue(0)}
+                            >0 Neutral</Button>
+                            <Button
+                                variant={batchSentimentValue === -1 ? 'danger' : 'outline-danger'}
+                                onClick={() => setBatchSentimentValue(-1)}
+                            >-1 Dislike</Button>
+                            <Button
+                                variant={batchSentimentValue === null ? 'secondary' : 'outline-secondary'}
+                                onClick={() => setBatchSentimentValue(null)}
+                            >Clear</Button>
+                        </div>
+                    </Form.Group>
+                    <div className="mt-2">
+                        <strong>{batchTargetChords.length}</strong> set{batchTargetChords.length !== 1 ? 's' : ''} will be affected.
+                    </div>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowBatchModal(false)}>Cancel</Button>
+                    <Button
+                        variant="primary"
+                        onClick={applyBatchSentiment}
+                        disabled={batchTargetChords.length === 0}
+                    >
+                        Apply
+                    </Button>
                 </Modal.Footer>
             </Modal>
             <PCS12Identifier show={showPcs12Modal} onHide={() => setShowPcs12Modal(false)} />
