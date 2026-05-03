@@ -123,6 +123,17 @@ export function getPitchClassSetNumericalFeatures(chord: PCS12): number[] {
     ];
 }
 
+export function isConsonantPitchClassSet(chord: PCS12): boolean {
+    const intervalVector = chord.getIntervalVector() ?? [];
+    const hasMinorSecond = (intervalVector[0] ?? 0) > 0;
+    const hasTritone = (intervalVector[5] ?? 0) > 0;
+    return !hasMinorSecond && !hasTritone;
+}
+
+export function isDissonantPitchClassSet(chord: PCS12): boolean {
+    return !isConsonantPitchClassSet(chord);
+}
+
 export function buildPitchClassSetSentimentCsv(sentiments: SentimentMap): string {
     const rows = [
         [

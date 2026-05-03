@@ -6,7 +6,14 @@ import * as tf from '@tensorflow/tfjs';
 import PCS12Identifier from './PCS12Identifier';
 import ChordListItem, { ChordDetails } from './ChordListItem';
 import { getIntervalVectorEntropyMetrics } from './intervalVectorEntropy';
-import { buildPitchClassSetSentimentCsv, loadSentiments, saveSentiments, SentimentValue } from './pcsSentiment';
+import {
+    buildPitchClassSetSentimentCsv,
+    isConsonantPitchClassSet,
+    isDissonantPitchClassSet,
+    loadSentiments,
+    saveSentiments,
+    SentimentValue,
+} from './pcsSentiment';
 import {
     clearStoredSentimentModel,
     clearStoredSentimentTrainingStats,
@@ -96,7 +103,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const [zMates, setZMates] = useState<PCS12[]>([]);
 
     // Batch sentiment modal
-    type BatchFilterMode = 'bySize' | 'byForteClass' | 'visible';
+    type BatchFilterMode = 'bySize' | 'byForteClass' | 'visible' | 'consonant' | 'dissonant';
     const [showBatchModal, setShowBatchModal] = useState(false);
     const [batchFilterMode, setBatchFilterMode] = useState<BatchFilterMode>('bySize');
     const [batchSizeValue, setBatchSizeValue] = useState(7);
@@ -480,6 +487,12 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
             const target = batchForteClass.trim();
             if (!target) return [];
             return allChords.filter(c => getForteBaseClass(c.toString()) === target);
+        }
+        if (batchFilterMode === 'consonant') {
+            return allChords.filter(isConsonantPitchClassSet);
+        }
+        if (batchFilterMode === 'dissonant') {
+            return allChords.filter(isDissonantPitchClassSet);
         }
         // 'visible' - matches currently visible main list
         return filteredPcs;
@@ -1613,9 +1626,10 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                     <h6>Batch Sentiment:</h6>
                     <p>
                         Use <strong>Batch Sentiment</strong> to label many sets at once. You can filter by size (e.g.
-                        dislike all sets of size 10), by Forte class (e.g. like all transpositions of 7-35), or by the
-                        sets currently visible in the main list. Choose the desired sentiment (+1, 0, −1, or Clear) and
-                        click <strong>Apply</strong>.
+                        dislike all sets of size 10), by Forte class (e.g. like all transpositions of 7-35), by
+                        consonance/dissonance (based on whether the interval vector contains a minor second or tritone),
+                        or by the sets currently visible in the main list. Choose the desired sentiment (+1, 0, -1, or
+                        Clear) and click <strong>Apply</strong>.
                     </p>
                     <h6>Neural-network sentiment prediction:</h6>
                     <p>
@@ -1716,10 +1730,12 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                         <Form.Label><strong>Filter</strong></Form.Label>
                         <Form.Select
                             value={batchFilterMode}
-                            onChange={e => setBatchFilterMode(e.target.value as 'bySize' | 'byForteClass' | 'visible')}
+                            onChange={e => setBatchFilterMode(e.target.value as BatchFilterMode)}
                         >
                             <option value="bySize">By size (number of notes)</option>
                             <option value="byForteClass">By Forte class (all transpositions)</option>
+                            <option value="consonant">Consonant sets (no minor second or tritone)</option>
+                            <option value="dissonant">Dissonant sets (minor second or tritone present)</option>
                             <option value="visible">Currently visible sets</option>
                         </Form.Select>
                     </Form.Group>
