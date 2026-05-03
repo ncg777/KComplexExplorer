@@ -123,6 +123,26 @@ export function getPitchClassSetNumericalFeatures(chord: PCS12): number[] {
     ];
 }
 
+export interface IntervalVectorRange {
+    min: number | null;
+    max: number | null;
+}
+
+export function matchesIntervalVectorRanges(chord: PCS12, ranges: IntervalVectorRange[]): boolean {
+    const intervalVector = chord.getIntervalVector() ?? [];
+
+    return ranges.every(({ min, max }, index) => {
+        if (min !== null && max !== null && min > max) {
+            return false;
+        }
+
+        const value = intervalVector[index] ?? 0;
+        if (min !== null && value < min) return false;
+        if (max !== null && value > max) return false;
+        return true;
+    });
+}
+
 export function buildPitchClassSetSentimentCsv(sentiments: SentimentMap): string {
     const rows = [
         [
