@@ -8,9 +8,9 @@ import ChordListItem, { ChordDetails } from './ChordListItem';
 import { getIntervalVectorEntropyMetrics } from './intervalVectorEntropy';
 import {
     buildPitchClassSetSentimentCsv,
-    isConsonantPitchClassSet,
-    isDissonantPitchClassSet,
+    IntervalVectorRange,
     loadSentiments,
+    matchesIntervalVectorRanges,
     saveSentiments,
     SentimentValue,
 } from './pcsSentiment';
@@ -70,6 +70,20 @@ interface MatrixSearchState {
     progress: number;
     message: string;
 }
+
+interface IntervalVectorRangeDraft {
+    min: string;
+    max: string;
+}
+
+function parseIntervalVectorBound(value: string): number | null {
+    if (!value.trim()) return null;
+
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isNaN(parsed)) return null;
+
+    return Math.max(0, parsed);
+}
     
 const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const pendingMainSelectionRef = useRef<string | null>(null);
@@ -103,11 +117,14 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const [zMates, setZMates] = useState<PCS12[]>([]);
 
     // Batch sentiment modal
-    type BatchFilterMode = 'bySize' | 'byForteClass' | 'visible' | 'consonant' | 'dissonant';
+    type BatchFilterMode = 'bySize' | 'byForteClass' | 'byIntervalVector' | 'visible';
     const [showBatchModal, setShowBatchModal] = useState(false);
     const [batchFilterMode, setBatchFilterMode] = useState<BatchFilterMode>('bySize');
     const [batchSizeValue, setBatchSizeValue] = useState(7);
     const [batchForteClass, setBatchForteClass] = useState('');
+    const [batchIntervalVectorRanges, setBatchIntervalVectorRanges] = useState<IntervalVectorRangeDraft[]>(() =>
+        Array.from({ length: 6 }, () => ({ min: '', max: '' }))
+    );
     const [batchSentimentValue, setBatchSentimentValue] = useState<SentimentValue>(1);
     const [sentiments, setSentiments] = useState(() => loadSentiments());
     const [predictedSentiments, setPredictedSentiments] = useState<SentimentPredictionMap>(() => loadStoredSentimentPredictions());
@@ -478,6 +495,19 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         return dotIndex === -1 ? forteStr : forteStr.slice(0, dotIndex);
     }, []);
 
+    const parsedBatchIntervalVectorRanges = useMemo<IntervalVectorRange[]>(() =>
+        batchIntervalVectorRanges.map(({ min, max }) => ({
+            min: parseIntervalVectorBound(min),
+            max: parseIntervalVectorBound(max),
+        })),
+    [batchIntervalVectorRanges]);
+
+    const updateBatchIntervalVectorRange = useCallback((index: number, bound: keyof IntervalVectorRangeDraft, value: string) => {
+        setBatchIntervalVectorRanges(prev => prev.map((range, rangeIndex) => (
+            rangeIndex === index ? { ...range, [bound]: value } : range
+        )));
+    }, []);
+
     const batchTargetChords = useMemo((): PCS12[] => {
         const allChords = Array.from(PCS12.getChords());
         if (batchFilterMode === 'bySize') {
@@ -488,15 +518,12 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
             if (!target) return [];
             return allChords.filter(c => getForteBaseClass(c.toString()) === target);
         }
-        if (batchFilterMode === 'consonant') {
-            return allChords.filter(isConsonantPitchClassSet);
-        }
-        if (batchFilterMode === 'dissonant') {
-            return allChords.filter(isDissonantPitchClassSet);
+        if (batchFilterMode === 'byIntervalVector') {
+            return allChords.filter(chord => matchesIntervalVectorRanges(chord, parsedBatchIntervalVectorRanges));
         }
         // 'visible' - matches currently visible main list
         return filteredPcs;
-    }, [batchFilterMode, batchSizeValue, batchForteClass, filteredPcs, getForteBaseClass]);
+    }, [batchFilterMode, batchSizeValue, batchForteClass, filteredPcs, getForteBaseClass, parsedBatchIntervalVectorRanges]);
 
     const applyBatchSentiment = useCallback(() => {
         if (batchTargetChords.length === 0) return;
@@ -1627,9 +1654,9 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                     <p>
                         Use <strong>Batch Sentiment</strong> to label many sets at once. You can filter by size (e.g.
                         dislike all sets of size 10), by Forte class (e.g. like all transpositions of 7-35), by
-                        consonance/dissonance (based on whether the interval vector contains a minor second or tritone),
-                        or by the sets currently visible in the main list. Choose the desired sentiment (+1, 0, -1, or
-                        Clear) and click <strong>Apply</strong>.
+                        interval-vector ranges (set optional min/max bounds for IV1 through IV6), or by the sets
+                        currently visible in the main list. Choose the desired sentiment (+1, 0, -1, or Clear) and
+                        click <strong>Apply</strong>.
                     </p>
                     <h6>Neural-network sentiment prediction:</h6>
                     <p>
@@ -1734,8 +1761,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                         >
                             <option value="bySize">By size (number of notes)</option>
                             <option value="byForteClass">By Forte class (all transpositions)</option>
-                            <option value="consonant">Consonant sets (no minor second or tritone)</option>
-                            <option value="dissonant">Dissonant sets (minor second or tritone present)</option>
+                            <option value="byIntervalVector">By interval vector (IV1-IV6 min/max)</option>
                             <option value="visible">Currently visible sets</option>
                         </Form.Select>
                     </Form.Group>
@@ -1760,6 +1786,36 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                 value={batchForteClass}
                                 onChange={e => setBatchForteClass(e.target.value)}
                             />
+                        </Form.Group>
+                    )}
+                    {batchFilterMode === 'byIntervalVector' && (
+                        <Form.Group controlId="batchIntervalVectorRanges" className="mb-3">
+                            <Form.Label>Interval vector bounds</Form.Label>
+                            {batchIntervalVectorRanges.map((range, index) => (
+                                <div key={`batch-iv-${index + 1}`} className="d-flex align-items-center gap-2 mb-2">
+                                    <span style={{ minWidth: '2.5rem' }}>{`IV${index + 1}`}</span>
+                                    <Form.Control
+                                        type="number"
+                                        min={0}
+                                        step={1}
+                                        placeholder="Min"
+                                        value={range.min}
+                                        onChange={e => updateBatchIntervalVectorRange(index, 'min', e.target.value)}
+                                    />
+                                    <span>to</span>
+                                    <Form.Control
+                                        type="number"
+                                        min={0}
+                                        step={1}
+                                        placeholder="Max"
+                                        value={range.max}
+                                        onChange={e => updateBatchIntervalVectorRange(index, 'max', e.target.value)}
+                                    />
+                                </div>
+                            ))}
+                            <Form.Text muted>
+                                Leave either side blank to omit that bound for the corresponding interval-vector entry.
+                            </Form.Text>
                         </Form.Group>
                     )}
                     <Form.Group controlId="batchSentimentValue" className="mb-3">

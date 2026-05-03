@@ -123,15 +123,24 @@ export function getPitchClassSetNumericalFeatures(chord: PCS12): number[] {
     ];
 }
 
-export function isConsonantPitchClassSet(chord: PCS12): boolean {
-    const intervalVector = chord.getIntervalVector() ?? [];
-    const hasMinorSecond = (intervalVector[0] ?? 0) > 0;
-    const hasTritone = (intervalVector[5] ?? 0) > 0;
-    return !hasMinorSecond && !hasTritone;
+export interface IntervalVectorRange {
+    min: number | null;
+    max: number | null;
 }
 
-export function isDissonantPitchClassSet(chord: PCS12): boolean {
-    return !isConsonantPitchClassSet(chord);
+export function matchesIntervalVectorRanges(chord: PCS12, ranges: IntervalVectorRange[]): boolean {
+    const intervalVector = chord.getIntervalVector() ?? [];
+
+    return ranges.every(({ min, max }, index) => {
+        if (min !== null && max !== null && min > max) {
+            return false;
+        }
+
+        const value = intervalVector[index] ?? 0;
+        if (min !== null && value < min) return false;
+        if (max !== null && value > max) return false;
+        return true;
+    });
 }
 
 export function buildPitchClassSetSentimentCsv(sentiments: SentimentMap): string {
