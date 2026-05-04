@@ -62,7 +62,7 @@ export const PCS_SENTIMENT_PREDICTIONS_STORAGE_KEY = 'kcomplex-pcs-sentiment-pre
 export const PCS_SENTIMENT_SCORES_STORAGE_KEY = 'kcomplex-pcs-sentiment-scores';
 export const PCS_SENTIMENT_TRAINING_STATS_STORAGE_KEY = 'kcomplex-pcs-sentiment-training-stats';
 
-const SENTIMENT_MODEL_LEARNING_RATE = 0.001;
+const SENTIMENT_MODEL_LEARNING_RATE = 0.0003;
 const SENTIMENT_MODEL_EARLY_STOPPING_PATIENCE = 25;
 const SENTIMENT_MODEL_EARLY_STOPPING_MIN_DELTA = 1e-4;
 
@@ -197,12 +197,15 @@ function buildTrainingDataset(dataset: DatasetBundle): TrainingDatasetBundle {
 }
 
 function createSentimentModel(inputSize: number): tf.LayersModel {
-    const hiddenUnits = Math.max(8, inputSize * 6);
     const model = tf.sequential({
         layers: [
             tf.layers.dense({
                 inputShape: [inputSize],
-                units: hiddenUnits,
+                units: 256,
+                activation: 'tanh',
+            }),
+            tf.layers.dense({
+                units: 64,
                 activation: 'tanh',
             }),
             tf.layers.dense({
@@ -581,7 +584,7 @@ export async function trainSentimentModel(
     const batchSize = trainingDataset.targets.length < 8
         ? trainingDataset.targets.length
         : Math.min(32, Math.max(8, Math.floor(trainingDataset.targets.length / 6)));
-    const validationSplit = 0;
+    const validationSplit = trainingDataset.targets.length >= 10 ? 0.2 : 0;
     const model = createSentimentModel(trainingDataset.normalizedFeatures[0]?.length ?? 1);
     const inputTensor = tf.tensor2d(trainingDataset.normalizedFeatures);
     const targetTensor = tf.tensor2d(trainingDataset.targets, [trainingDataset.targets.length, 1]);
@@ -594,7 +597,7 @@ export async function trainSentimentModel(
             validationSplit,
             callbacks: [
                 tf.callbacks.earlyStopping({
-                    monitor: 'loss',
+                    monitor: validationSplit > 0 ? 'val_loss' : 'loss',
                     mode: 'min',
                     patience: SENTIMENT_MODEL_EARLY_STOPPING_PATIENCE,
                     minDelta: SENTIMENT_MODEL_EARLY_STOPPING_MIN_DELTA,
