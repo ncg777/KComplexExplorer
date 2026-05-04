@@ -50,7 +50,15 @@ import {
 import {
     generateRandomPitchClassMatrix,
     RandomPitchClassMatrixSearchCancelledError,
+    computeAttractiveCandidates,
+    computeValidCandidatesForCell,
+    computeColumnUnionMask,
+    computeChordFromMask,
+    computePitchClassMask,
+    solvePartialMatrix,
+    MatrixCandidate,
 } from './randomPitchClassMatrix';
+import MatrixBoard from './MatrixBoard';
 import './KComplexExplorer.css';
 import * as Tone from 'tone';
 import { useSynth } from './SynthContext'; // Import the useSynth hook
@@ -143,7 +151,11 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const [matrixNoteCount, setMatrixNoteCount] = useState(3);
     const [matrixStiffness, setMatrixStiffness] = useState(0);
     const [matrixStasisWeight, setMatrixStasisWeight] = useState(0.1);
-    const [matrixOutput, setMatrixOutput] = useState('');
+    const [matrixData, setMatrixData] = useState<PCS12[][] | null>(null);
+    const [lockedCells, setLockedCells] = useState<boolean[][]>([]);
+    const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
+    const [showCellEditor, setShowCellEditor] = useState(false);
+    const [matrixHistory, setMatrixHistory] = useState<PCS12[][][]>([]);
     const modelRef = useRef<tf.LayersModel | null>(null);
     const trainingStatsRef = useRef<SentimentTrainingStats | null>(trainingStats);
     const importPresetInputRef = useRef<HTMLInputElement>(null);
@@ -477,10 +489,6 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const copyToClipboard = useCallback(async (text: string) => {
         await navigator.clipboard.writeText(text);
     },[]);
-
-    const formatPitchClassMatrix = useCallback((matrix: PCS12[][]) =>
-        matrix.map(row => row.map(chord => chord.toString()).join(' ')).join('\n')
-    , []);
 
     const updateSentiment = useCallback((chord: PCS12, sentiment: SentimentValue) => {
         const forte = chord.toString();
@@ -958,6 +966,10 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         }));
     }, []);
 
+    const pushMatrixHistory = useCallback((current: PCS12[][]) => {
+        setMatrixHistory(prev => [...prev.slice(-19), current.map(row => [...row])]);
+    }, []);
+
     const handleGenerateRandomMatrix = useCallback(async () => {
         const upperBound = PCS12.parseForte(selectedScale);
         if (!upperBound) {
@@ -966,7 +978,11 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         }
 
         cancelMatrixSearchRef.current = false;
-        setMatrixOutput('');
+        setMatrixData(null);
+        setLockedCells([]);
+        setSelectedCell(null);
+        setShowCellEditor(false);
+        setMatrixHistory([]);
         setModelFeedback('');
         setMatrixSearchState({
             isSearching: true,
@@ -992,7 +1008,8 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                 }),
             });
 
-            setMatrixOutput(formatPitchClassMatrix(result.matrix));
+            setMatrixData(result.matrix);
+            setLockedCells(Array.from({ length: matrixRowCount }, () => Array(matrixColumnCount).fill(false)));
             setModelFeedback(
                 `Generated a random ${matrixRowCount}×${matrixColumnCount} matrix from ${result.candidateCount} attractive candidates `
                 + `at β=${matrixStiffness.toFixed(1)}, stasis=${matrixStasisWeight.toFixed(2)}, seed=${result.seed}.`
@@ -1014,7 +1031,77 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                 setMatrixSearchState({ isSearching: false, progress: 0, message: '' });
             }, 250);
         }
-    }, [formatPitchClassMatrix, matrixColumnCount, matrixNoteCount, matrixRowCount, matrixStasisWeight, matrixStiffness, predictedSentimentScores, predictedSentiments, selectedScale]);
+    }, [matrixColumnCount, matrixNoteCount, matrixRowCount, matrixStasisWeight, matrixStiffness, predictedSentimentScores, predictedSentiments, selectedScale]);
+
+    const handleRepairMatrix = useCallback(async () => {
+        const upperBound = PCS12.parseForte(selectedScale);
+        if (!upperBound || !matrixData) return;
+
+        cancelMatrixSearchRef.current = false;
+        setModelFeedback('');
+        setMatrixSearchState({ isSearching: true, progress: 0, message: 'Repairing matrix...' });
+
+        try {
+            const result = await solvePartialMatrix({
+                upperBound,
+                noteCount: matrixNoteCount,
+                predictions: predictedSentiments,
+                predictionScores: predictedSentimentScores,
+                stiffness: matrixStiffness,
+                stasisWeight: matrixStasisWeight,
+                currentMatrix: matrixData,
+                lockedCells,
+                shouldCancel: () => cancelMatrixSearchRef.current,
+                onProgress: progress => setMatrixSearchState({ isSearching: true, progress: progress.progress, message: progress.message }),
+            });
+
+            if (result) {
+                pushMatrixHistory(matrixData);
+                setMatrixData(result.matrix);
+                setSelectedCell(null);
+                setShowCellEditor(false);
+                setModelFeedback(`Matrix repaired. ${result.candidateCount} candidates available.`);
+            } else {
+                setModelFeedback('No valid matrix found while respecting locked cells. Try unlocking some cells.');
+            }
+        } catch (error) {
+            if (error instanceof RandomPitchClassMatrixSearchCancelledError) {
+                setModelFeedback('Repair cancelled.');
+            } else {
+                console.error('Unable to repair matrix.', error);
+                setModelFeedback(error instanceof Error ? error.message : 'Unable to repair the matrix.');
+            }
+        } finally {
+            window.setTimeout(() => setMatrixSearchState({ isSearching: false, progress: 0, message: '' }), 250);
+        }
+    }, [lockedCells, matrixData, matrixNoteCount, matrixStasisWeight, matrixStiffness, predictedSentimentScores, predictedSentiments, pushMatrixHistory, selectedScale]);
+
+    const handleUndo = useCallback(() => {
+        if (matrixHistory.length === 0) return;
+        const prev = matrixHistory[matrixHistory.length - 1];
+        setMatrixData(prev);
+        setMatrixHistory(h => h.slice(0, -1));
+        setSelectedCell(null);
+        setShowCellEditor(false);
+    }, [matrixHistory]);
+
+    const handleCellClick = useCallback((row: number, col: number) => {
+        setSelectedCell({ row, col });
+        setShowCellEditor(true);
+    }, []);
+
+    const handleLockToggle = useCallback((row: number, col: number) => {
+        setLockedCells(prev => {
+            const next = prev.map(r => [...r]);
+            if (!next[row]) next[row] = [];
+            next[row][col] = !(next[row][col] ?? false);
+            return next;
+        });
+    }, []);
+
+    const handleCellEditorClose = useCallback(() => {
+        setShowCellEditor(false);
+    }, []);
 
     // Polychord UI state and computation
     const [showPolychord, setShowPolychord] = useState(false);
@@ -1501,22 +1588,227 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                 Generate Matrix
                             </Button>
                             <Button
+                                variant="outline-info"
+                                onClick={handleRepairMatrix}
+                                disabled={isBusy || !matrixData}
+                                title="Re-solve all unlocked cells while respecting locked ones"
+                            >
+                                Repair
+                            </Button>
+                            <Button
                                 variant="outline-secondary"
-                                onClick={() => setMatrixOutput('')}
-                                disabled={isBusy || !matrixOutput}
+                                onClick={handleUndo}
+                                disabled={isBusy || matrixHistory.length === 0}
+                            >
+                                Undo
+                                {matrixHistory.length > 0 && (
+                                    <span className="matrix-undo-badge badge bg-secondary">{matrixHistory.length}</span>
+                                )}
+                            </Button>
+                            <Button
+                                variant="outline-danger"
+                                onClick={() => {
+                                    setMatrixData(null);
+                                    setLockedCells([]);
+                                    setSelectedCell(null);
+                                    setShowCellEditor(false);
+                                    setMatrixHistory([]);
+                                }}
+                                disabled={isBusy || !matrixData}
                             >
                                 Clear
                             </Button>
                         </div>
                     </div>
-                    <Form.Control
-                        as="textarea"
-                        rows={6}
-                        readOnly
-                        value={matrixOutput}
-                        placeholder="Generated matrix will appear here."
-                        className="random-matrix-output"
-                    />
+                    {matrixData ? (
+                        <MatrixBoard
+                            matrix={matrixData}
+                            lockedCells={lockedCells}
+                            selectedCell={selectedCell}
+                            predictions={predictedSentiments}
+                            onCellClick={handleCellClick}
+                            onLockToggle={handleLockToggle}
+                        />
+                    ) : (
+                        <div style={{ color: '#888', fontSize: '0.9rem', padding: '8px 0' }}>
+                            Generate a matrix to see the visual editor.
+                        </div>
+                    )}
+
+                    {/* Cell editor — bottom sheet modal */}
+                    {matrixData && selectedCell && (() => {
+                        const { row, col } = selectedCell;
+                        const chord = matrixData[row]?.[col];
+                        if (!chord) return null;
+
+                        const upperBound = PCS12.parseForte(selectedScale);
+                        const allCandidates = upperBound
+                            ? computeAttractiveCandidates(upperBound, matrixNoteCount, predictedSentiments, predictedSentimentScores)
+                            : [];
+                        const validCandidates = computeValidCandidatesForCell(matrixData, row, col, allCandidates, predictedSentiments)
+                            .sort((a, b) => b.score - a.score);
+
+                        const cols = matrixData[0]?.length ?? 0;
+                        const leftChord = col > 0 ? matrixData[row][col - 1] : null;
+                        const rightChord = col < cols - 1 ? matrixData[row][col + 1] : null;
+                        const wrapChord = col === cols - 1 && cols > 1 ? matrixData[row][0] : null;
+                        const colMask = computeColumnUnionMask(matrixData, col);
+                        const colChord = colMask ? computeChordFromMask(colMask) : null;
+
+                        const checkPred = (mask: number) => predictedSentiments[computeChordFromMask(mask).toString()] === 1;
+                        const icon = (ok: boolean) => ok ? '✅' : '❌';
+
+                        const leftMask = leftChord ? computePitchClassMask(leftChord) : 0;
+                        const rightMask = rightChord ? computePitchClassMask(rightChord) : 0;
+                        const wrapMask = wrapChord ? computePitchClassMask(wrapChord) : 0;
+                        const cellMask = computePitchClassMask(chord);
+
+                        const isLocked = lockedCells[row]?.[col] ?? false;
+
+                        const applyCandidate = (candidate: MatrixCandidate) => {
+                            pushMatrixHistory(matrixData);
+                            setMatrixData(prev => {
+                                if (!prev) return prev;
+                                const next = prev.map(r => [...r]);
+                                next[row][col] = candidate.chord;
+                                return next;
+                            });
+                            setShowCellEditor(false);
+                        };
+
+                        const applyRandom = () => {
+                            if (validCandidates.length === 0) return;
+                            const pick = validCandidates[Math.floor(Math.random() * validCandidates.length)];
+                            applyCandidate(pick);
+                        };
+
+                        const applyBest = () => {
+                            if (validCandidates.length === 0) return;
+                            applyCandidate(validCandidates[0]);
+                        };
+
+                        return (
+                            <Modal
+                                show={showCellEditor}
+                                onHide={handleCellEditorClose}
+                                size="lg"
+                                centered
+                                scrollable
+                            >
+                                <Modal.Header closeButton>
+                                    <Modal.Title style={{ fontSize: '1rem' }}>
+                                        Cell ({row + 1}, {col + 1}) — {chord.toString()}
+                                        {isLocked && <span style={{ marginLeft: 8 }}>🔒</span>}
+                                    </Modal.Title>
+                                </Modal.Header>
+                                <Modal.Body>
+                                    {/* Quick actions */}
+                                    <div className="cell-editor-actions">
+                                        <Button
+                                            size="sm"
+                                            variant={isLocked ? 'warning' : 'outline-warning'}
+                                            onClick={() => handleLockToggle(row, col)}
+                                        >
+                                            {isLocked ? '🔓 Unlock' : '🔒 Lock'}
+                                        </Button>
+                                        {!isLocked && (
+                                            <>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline-success"
+                                                    onClick={applyBest}
+                                                    disabled={validCandidates.length === 0}
+                                                >
+                                                    Best candidate
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline-info"
+                                                    onClick={applyRandom}
+                                                    disabled={validCandidates.length === 0}
+                                                >
+                                                    Random valid
+                                                </Button>
+                                            </>
+                                        )}
+                                    </div>
+
+                                    {/* Constraints */}
+                                    <div className="cell-editor-section-title">Constraints</div>
+                                    <div style={{ marginBottom: 10 }}>
+                                        <div className="cell-editor-constraint">
+                                            <span className="cell-editor-constraint-icon">{icon(checkPred(cellMask))}</span>
+                                            <span>Cell {chord.toString()} — attractive: {checkPred(cellMask) ? 'yes' : 'no'}</span>
+                                        </div>
+                                        {leftChord && (
+                                            <div className="cell-editor-constraint">
+                                                <span className="cell-editor-constraint-icon">{icon(checkPred(cellMask | leftMask))}</span>
+                                                <span>∪ left ({leftChord.toString()}) = {computeChordFromMask(cellMask | leftMask).toString()}</span>
+                                            </div>
+                                        )}
+                                        {rightChord && (
+                                            <div className="cell-editor-constraint">
+                                                <span className="cell-editor-constraint-icon">{icon(checkPred(cellMask | rightMask))}</span>
+                                                <span>∪ right ({rightChord.toString()}) = {computeChordFromMask(cellMask | rightMask).toString()}</span>
+                                            </div>
+                                        )}
+                                        {wrapChord && (
+                                            <div className="cell-editor-constraint">
+                                                <span className="cell-editor-constraint-icon">{icon(checkPred(cellMask | wrapMask))}</span>
+                                                <span>∪ wrap ({wrapChord.toString()}) = {computeChordFromMask(cellMask | wrapMask).toString()}</span>
+                                            </div>
+                                        )}
+                                        {colChord && (
+                                            <div className="cell-editor-constraint">
+                                                <span className="cell-editor-constraint-icon">{icon(checkPred(colMask))}</span>
+                                                <span>Column ∪ = {colChord.toString()}</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Candidate list */}
+                                    {!isLocked && (
+                                        <>
+                                            <div className="cell-editor-section-title">
+                                                Valid replacements ({validCandidates.length})
+                                            </div>
+                                            {validCandidates.length === 0 ? (
+                                                <div className="cell-editor-no-candidates">
+                                                    No valid candidates found for this cell.
+                                                </div>
+                                            ) : (
+                                                <div className="cell-editor-candidate-list">
+                                                    {validCandidates.map(cand => {
+                                                        const sentClass = predictedSentiments[cand.forte] === 1 ? 'positive'
+                                                            : predictedSentiments[cand.forte] === -1 ? 'negative' : 'neutral';
+                                                        return (
+                                                            <button
+                                                                key={cand.forte}
+                                                                type="button"
+                                                                className={`cell-editor-candidate ${sentClass}`}
+                                                                onClick={() => applyCandidate(cand)}
+                                                            >
+                                                                <span className="cell-editor-candidate-forte">{cand.forte}</span>
+                                                                <span className="cell-editor-candidate-pcs">
+                                                                    {cand.chord.asSequence().map(pc => pc < 10 ? pc : pc === 10 ? 'T' : 'E').join('')}
+                                                                </span>
+                                                                <span className="cell-editor-candidate-score">
+                                                                    {cand.score.toFixed(2)}
+                                                                </span>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </Modal.Body>
+                                <Modal.Footer>
+                                    <Button variant="secondary" onClick={handleCellEditorClose}>Close</Button>
+                                </Modal.Footer>
+                            </Modal>
+                        );
+                    })()}
                 </div>
             )}
             <Modal show={showPresetModal} onHide={() => setShowPresetModal(false)} size="lg">

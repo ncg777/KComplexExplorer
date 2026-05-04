@@ -1,0 +1,293 @@
+/* ===== Matrix Board ===== */
+
+.matrix-board-wrapper {
+    margin-top: 10px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.matrix-board,
+.matrix-union-row {
+    display: grid;
+    grid-template-columns: repeat(var(--cols, 4), minmax(72px, 1fr));
+    gap: 4px;
+    min-width: calc(var(--cols, 4) * 76px);
+}
+
+.matrix-union-row {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid #555;
+}
+
+/* ===== Cell card ===== */
+
+.matrix-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-width: 72px;
+    min-height: 64px;
+    padding: 6px 4px;
+    border-radius: 6px;
+    border: 2px solid transparent;
+    background: #2a2a2a;
+    color: white;
+    cursor: pointer;
+    text-align: center;
+    position: relative;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+.matrix-cell:active {
+    opacity: 0.8;
+}
+
+.matrix-cell.positive {
+    border-color: #28a745;
+    background: rgba(40, 167, 69, 0.12);
+}
+
+.matrix-cell.negative {
+    border-color: #dc3545;
+    background: rgba(220, 53, 69, 0.12);
+}
+
+.matrix-cell.neutral {
+    border-color: #6c757d;
+    background: rgba(108, 117, 125, 0.12);
+}
+
+.matrix-cell.selected {
+    box-shadow: 0 0 0 3px #ffc107;
+    border-color: #ffc107;
+}
+
+.matrix-cell.locked {
+    opacity: 0.75;
+}
+
+.matrix-cell-forte {
+    font-size: 0.8rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+.matrix-cell-pcs {
+    font-size: 0.7rem;
+    color: #bbb;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    letter-spacing: 0.04em;
+}
+
+.matrix-cell-lock {
+    position: absolute;
+    top: 2px;
+    right: 3px;
+    font-size: 0.6rem;
+    line-height: 1;
+}
+
+/* ===== Column union row ===== */
+
+.matrix-union-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-width: 72px;
+    padding: 4px;
+    border-radius: 6px;
+    border: 1px dashed;
+    background: rgba(0, 0, 0, 0.2);
+    text-align: center;
+}
+
+.matrix-union-cell.positive {
+    border-color: #28a745;
+}
+
+.matrix-union-cell.negative {
+    border-color: #dc3545;
+}
+
+.matrix-union-cell.neutral {
+    border-color: #6c757d;
+}
+
+.matrix-union-label {
+    font-size: 0.65rem;
+    color: #888;
+    font-weight: 600;
+}
+
+/* ===== Lock hint bar ===== */
+
+.matrix-lock-hint {
+    margin-top: 6px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.matrix-lock-btn {
+    background: none;
+    border: 1px solid #555;
+    border-radius: 4px;
+    color: #ccc;
+    font-size: 0.8rem;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+}
+
+.matrix-lock-btn:hover {
+    border-color: #ffc107;
+    color: #ffc107;
+}
+
+/* ===== Cell editor bottom sheet (modal) ===== */
+
+.cell-editor-candidate {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid #444;
+    background: #2a2a2a;
+    color: white;
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    transition: border-color 0.15s, background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    margin-bottom: 4px;
+}
+
+.cell-editor-candidate:hover,
+.cell-editor-candidate:focus {
+    border-color: #6ea8fe;
+    background: #313131;
+    outline: none;
+}
+
+.cell-editor-candidate.positive {
+    border-left: 3px solid #28a745;
+}
+
+.cell-editor-candidate.negative {
+    border-left: 3px solid #dc3545;
+}
+
+.cell-editor-candidate.neutral {
+    border-left: 3px solid #6c757d;
+}
+
+.cell-editor-candidate-forte {
+    font-weight: 700;
+    font-size: 0.9rem;
+    min-width: 60px;
+}
+
+.cell-editor-candidate-pcs {
+    font-size: 0.8rem;
+    color: #bbb;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    flex: 1;
+}
+
+.cell-editor-candidate-score {
+    font-size: 0.75rem;
+    color: #aaa;
+    white-space: nowrap;
+}
+
+.cell-editor-constraint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    padding: 3px 0;
+}
+
+.cell-editor-constraint-icon {
+    font-size: 0.9rem;
+}
+
+.cell-editor-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.cell-editor-section-title {
+    font-weight: 600;
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+    color: #ccc;
+}
+
+.cell-editor-no-candidates {
+    color: #888;
+    font-size: 0.9rem;
+    padding: 8px 0;
+    text-align: center;
+    font-style: italic;
+}
+
+.cell-editor-candidate-list {
+    max-height: 40vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ===== Matrix actions bar ===== */
+
+.matrix-actions-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+/* ===== Undo count badge ===== */
+
+.matrix-undo-badge {
+    font-size: 0.7rem;
+    vertical-align: middle;
+    margin-left: 4px;
+}
+
+/* ===== Mobile responsive ===== */
+
+@media (max-width: 480px) {
+    .matrix-cell,
+    .matrix-union-cell {
+        min-width: 60px;
+        padding: 4px 2px;
+    }
+
+    .matrix-board,
+    .matrix-union-row {
+        grid-template-columns: repeat(var(--cols, 4), minmax(60px, 1fr));
+        min-width: calc(var(--cols, 4) * 64px);
+    }
+
+    .matrix-cell-forte {
+        font-size: 0.72rem;
+    }
+
+    .matrix-cell-pcs {
+        font-size: 0.62rem;
+    }
+}
