@@ -63,7 +63,7 @@ export const PCS_SENTIMENT_SCORES_STORAGE_KEY = 'kcomplex-pcs-sentiment-scores';
 export const PCS_SENTIMENT_TRAINING_STATS_STORAGE_KEY = 'kcomplex-pcs-sentiment-training-stats';
 
 const SENTIMENT_MODEL_LEARNING_RATE = 0.001;
-const SENTIMENT_MODEL_EARLY_STOPPING_PATIENCE = 12;
+const SENTIMENT_MODEL_EARLY_STOPPING_PATIENCE = 25;
 const SENTIMENT_MODEL_EARLY_STOPPING_MIN_DELTA = 1e-4;
 
 function compileSentimentModel(model: tf.LayersModel) {
@@ -197,7 +197,7 @@ function buildTrainingDataset(dataset: DatasetBundle): TrainingDatasetBundle {
 }
 
 function createSentimentModel(inputSize: number): tf.LayersModel {
-    const hiddenUnits = Math.max(8, inputSize * 4);
+    const hiddenUnits = Math.max(8, inputSize * 6);
     const model = tf.sequential({
         layers: [
             tf.layers.dense({
