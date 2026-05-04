@@ -6,6 +6,7 @@ import * as Tone from 'tone';
 import './PCS12Identifier.css';
 import { useSynth } from './SynthContext';
 import { getIntervalVectorEntropyMetrics } from './intervalVectorEntropy';
+import { getCyclicalMean } from './cyclicalMean';
 
 const WHITE_KEY_WIDTH = '14.2857%';
 const BLACK_KEY_WIDTH = '8%';
@@ -58,6 +59,7 @@ const PCS12Identifier: React.FC<{ show: boolean; onHide: () => void }> = ({ show
         setIdentifiedPCS12(pcs12);
     };
     const { entropy, level } = getIntervalVectorEntropyMetrics(identifiedPCS12);
+    const cyclicalMean = getCyclicalMean(identifiedPCS12);
     
     return (
         <Modal show={show} onHide={onHide}>
@@ -120,7 +122,8 @@ const PCS12Identifier: React.FC<{ show: boolean; onHide: () => void }> = ({ show
                     <strong>Interval vector: </strong>{identifiedPCS12.getIntervalVector()?.join(' ') || '[]'}<br />
                     <strong>Interval vector entropy: </strong>{entropy.toFixed(3)} ({level})<br />
                     <strong>Symmetries: </strong>{identifiedPCS12.getSymmetries().map(x => String(x)).join(" ") || "None"}<br />
-                    <strong>Tension partition: </strong>{identifiedPCS12.getTensionPartition().map(x => String(x)).join(" ") || "None"}
+                    <strong>Tension partition: </strong>{identifiedPCS12.getTensionPartition().map(x => String(x)).join(" ") || "None"} <em>(experimental)</em><br />
+                    <strong>Cyclical mean: </strong>{cyclicalMean ? `${cyclicalMean.value.toFixed(3)} (≈${cyclicalMean.nearestNote})` : 'N/A'}
                 </div>
             </Modal.Body>
             <Modal.Footer>
