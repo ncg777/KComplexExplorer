@@ -14,7 +14,7 @@ function getSpan(chord: PCS12): number {
     for (let i = 0; i < sorted.length - 1; i++) {
         maxGap = Math.max(maxGap, sorted[i + 1] - sorted[i]);
     }
-    return 12 - maxGap;
+    return 12 - maxGap + 1;
 }
 
 function getComplementForteNumber(chord: PCS12): string {
