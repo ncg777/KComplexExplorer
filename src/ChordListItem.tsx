@@ -9,7 +9,12 @@ import { PredictedSentimentValue } from './pcsSentimentModel';
 function getSpan(chord: PCS12): number {
     const pcs = chord.combinationString().split(' ').filter(Boolean).map(Number);
     if (pcs.length < 2) return 0;
-    return Math.max(...pcs) - Math.min(...pcs);
+    const sorted = [...pcs].sort((a, b) => a - b);
+    let maxGap = 12 + sorted[0] - sorted[sorted.length - 1];
+    for (let i = 0; i < sorted.length - 1; i++) {
+        maxGap = Math.max(maxGap, sorted[i + 1] - sorted[i]);
+    }
+    return 12 - maxGap;
 }
 
 function getComplementForteNumber(chord: PCS12): string {
