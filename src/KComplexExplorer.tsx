@@ -487,7 +487,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     },[synth]);
 
     const getChordMatrixLabel = useCallback((chord: PCS12) => (
-        chord.getCommonName() || chord.toString()
+        chord.toString()
     ), []);
     
     const copyToClipboard = useCallback(async (text: string) => {
@@ -1624,7 +1624,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                 variant="outline-info"
                                 onClick={copyMatrixToClipboard}
                                 disabled={isBusy || !matrixData}
-                                title="Copy the matrix as tab-separated chord names"
+                                title="Copy the matrix as tab-separated Forte numbers"
                             >
                                 📋 Copy names
                             </Button>
