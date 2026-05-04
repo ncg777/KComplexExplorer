@@ -33,11 +33,34 @@ export class RandomPitchClassMatrixSearchCancelledError extends Error {
     }
 }
 
-interface AttractiveCandidate {
+export interface MatrixCandidate {
     chord: PCS12;
     forte: string;
     mask: number;
     score: number;
+}
+
+// Keep the private alias for internal use
+type AttractiveCandidate = MatrixCandidate;
+
+export interface SolvePartialMatrixOptions {
+    upperBound: PCS12;
+    noteCount: number;
+    predictions: SentimentPredictionMap;
+    predictionScores?: SentimentScoreMap;
+    stiffness?: number;
+    stasisWeight?: number;
+    seed?: number;
+    currentMatrix: PCS12[][];
+    lockedCells: boolean[][];
+    shouldCancel?: () => boolean;
+    onProgress?: (progress: RandomPitchClassMatrixProgress) => void;
+}
+
+export interface SolvePartialMatrixResult {
+    matrix: PCS12[][];
+    candidateCount: number;
+    seed: number;
 }
 
 const UI_YIELD_INTERVAL = 250;
@@ -51,11 +74,11 @@ function ensureNotCancelled(shouldCancel?: () => boolean) {
     }
 }
 
-function getPitchClassMask(chord: PCS12): number {
+export function computePitchClassMask(chord: PCS12): number {
     return chord.asSequence().reduce((mask, pitchClass) => mask | (1 << pitchClass), 0);
 }
 
-function createChordFromMask(mask: number): PCS12 {
+export function computeChordFromMask(mask: number): PCS12 {
     const set = new Set<number>();
     for (let pitchClass = 0; pitchClass < 12; pitchClass += 1) {
         if ((mask & (1 << pitchClass)) !== 0) {
@@ -65,6 +88,10 @@ function createChordFromMask(mask: number): PCS12 {
 
     return PCS12.identify(PCS12.createWithSizeAndSet(12, set));
 }
+
+// Keep private aliases for internal use
+const getPitchClassMask = computePitchClassMask;
+const createChordFromMask = computeChordFromMask;
 
 function getHammingDistance(leftMask: number, rightMask: number): number {
     let diff = leftMask ^ rightMask;
@@ -100,6 +127,15 @@ function getAttractiveCandidates(
                 score: Number.isFinite(score) ? Math.max(score, 0) : 1,
             };
         });
+}
+
+export function computeAttractiveCandidates(
+    upperBound: PCS12,
+    noteCount: number,
+    predictions: SentimentPredictionMap,
+    predictionScores: SentimentScoreMap = {},
+): MatrixCandidate[] {
+    return getAttractiveCandidates(upperBound, noteCount, predictions, predictionScores);
 }
 
 function normalizeSeed(seed: number): number {
@@ -184,6 +220,229 @@ function getWeightedCandidateOrder(
     }
 
     return ordered;
+}
+
+export function computeColumnUnionMask(matrix: PCS12[][], col: number): number {
+    return matrix.reduce((mask, row) => mask | getPitchClassMask(row[col]), 0);
+}
+
+export function computeValidCandidatesForCell(
+    matrix: PCS12[][],
+    row: number,
+    col: number,
+    candidates: MatrixCandidate[],
+    predictions: SentimentPredictionMap,
+): MatrixCandidate[] {
+    const rows = matrix.length;
+    const cols = matrix[0]?.length ?? 0;
+
+    const hasPositivePrediction = (mask: number): boolean => {
+        if (mask === 0) return false;
+        return predictions[computeChordFromMask(mask).toString()] === 1;
+    };
+
+    // Column union without the current cell
+    let colUnionWithoutCell = 0;
+    for (let r = 0; r < rows; r += 1) {
+        if (r !== row && matrix[r][col]) {
+            colUnionWithoutCell |= getPitchClassMask(matrix[r][col]);
+        }
+    }
+
+    const leftMask = col > 0 && matrix[row][col - 1] ? getPitchClassMask(matrix[row][col - 1]) : -1;
+    const rightMask = col < cols - 1 && matrix[row][col + 1] ? getPitchClassMask(matrix[row][col + 1]) : -1;
+    const wrapMask = col === cols - 1 && cols > 1 && matrix[row][0] ? getPitchClassMask(matrix[row][0]) : -1;
+
+    return candidates.filter(candidate => {
+        const mask = candidate.mask;
+        if (leftMask >= 0 && !hasPositivePrediction(mask | leftMask)) return false;
+        if (rightMask >= 0 && !hasPositivePrediction(mask | rightMask)) return false;
+        if (wrapMask >= 0 && !hasPositivePrediction(mask | wrapMask)) return false;
+        if (!hasPositivePrediction(colUnionWithoutCell | mask)) return false;
+        return true;
+    });
+}
+
+export async function solvePartialMatrix({
+    upperBound,
+    noteCount,
+    predictions,
+    predictionScores = {},
+    stiffness = 0,
+    stasisWeight = 0.1,
+    seed = Date.now(),
+    currentMatrix,
+    lockedCells,
+    shouldCancel,
+    onProgress,
+}: SolvePartialMatrixOptions): Promise<SolvePartialMatrixResult | null> {
+    const rows = currentMatrix.length;
+    const columns = currentMatrix[0]?.length ?? 0;
+
+    const candidates = getAttractiveCandidates(upperBound, noteCount, predictions, predictionScores);
+    if (candidates.length === 0) {
+        throw new Error('No attractively predicted pitch class sets are available within the selected upper bound.');
+    }
+
+    const normalizedSeed = normalizeSeed(seed);
+    const random = createSeededRandom(normalizedSeed);
+
+    // Pre-compute future locked mask contributions per column (from row r onward)
+    const futureLockedMasks: number[][] = Array.from({ length: columns }, (_, col) => {
+        const arr = Array(rows + 1).fill(0);
+        for (let r = rows - 1; r >= 0; r -= 1) {
+            arr[r] = arr[r + 1];
+            if (lockedCells[r]?.[col] && currentMatrix[r]?.[col]) {
+                arr[r] |= getPitchClassMask(currentMatrix[r][col]);
+            }
+        }
+        return arr;
+    });
+
+    // Count future unlocked cells per column (from row r onward)
+    const futureUnlockedCounts: number[][] = Array.from({ length: columns }, (_, col) => {
+        const arr = Array(rows + 1).fill(0);
+        for (let r = rows - 1; r >= 0; r -= 1) {
+            arr[r] = arr[r + 1] + (lockedCells[r]?.[col] ? 0 : 1);
+        }
+        return arr;
+    });
+
+    const placedMasks: number[][] = Array.from({ length: rows }, () => Array(columns).fill(-1));
+    const columnUnionMasks = Array.from({ length: columns }, () => 0);
+    const positivityByMask = new Map<number, boolean>();
+    const columnReachabilityCache = new Map<string, boolean>();
+    let visitedStates = 0;
+
+    const hasPositivePrediction = (mask: number): boolean => {
+        if (mask === 0) return false;
+        const cached = positivityByMask.get(mask);
+        if (cached !== undefined) return cached;
+        const isPositive = predictions[createChordFromMask(mask).toString()] === 1;
+        positivityByMask.set(mask, isPositive);
+        return isPositive;
+    };
+
+    const canReachPositiveColumnUnion = (mask: number, remainingUnlocked: number): boolean => {
+        if (mask !== 0 && hasPositivePrediction(mask)) return true;
+        if (remainingUnlocked === 0) return false;
+        const cacheKey = `${mask}:${remainingUnlocked}`;
+        const cached = columnReachabilityCache.get(cacheKey);
+        if (cached !== undefined) return cached;
+        for (const candidate of candidates) {
+            if (canReachPositiveColumnUnion(mask | candidate.mask, remainingUnlocked - 1)) {
+                columnReachabilityCache.set(cacheKey, true);
+                return true;
+            }
+        }
+        columnReachabilityCache.set(cacheKey, false);
+        return false;
+    };
+
+    const maybeYieldToUi = async (position: number) => {
+        visitedStates += 1;
+        if (visitedStates % UI_YIELD_INTERVAL !== 0) return;
+        onProgress?.({
+            progress: Math.round(((visitedStates % SEARCH_PROGRESS_SPAN) / SEARCH_PROGRESS_SPAN) * 100),
+            message: `Solving ${rows}×${columns} matrix — explored ${visitedStates.toLocaleString()} states.`,
+        });
+        await new Promise<void>(resolve => setTimeout(resolve, 0));
+        ensureNotCancelled(shouldCancel);
+    };
+
+    const tryPlace = async (position: number): Promise<boolean> => {
+        ensureNotCancelled(shouldCancel);
+        await maybeYieldToUi(position);
+
+        if (position >= rows * columns) {
+            return columnUnionMasks.every(hasPositivePrediction);
+        }
+
+        const row = Math.floor(position / columns);
+        const column = position % columns;
+        const isLocked = !!(lockedCells[row]?.[column] && currentMatrix[row]?.[column]);
+        const leftMask = column > 0 ? placedMasks[row][column - 1] : -1;
+        const firstMaskInRow = placedMasks[row][0];
+        const previousColumnUnionMask = columnUnionMasks[column];
+        const futureLockedMask = futureLockedMasks[column][row + 1];
+        const futureUnlocked = futureUnlockedCounts[column][row + 1];
+
+        const tryCandidate = async (candidateMask: number): Promise<boolean> => {
+            const nextColumnUnionMask = previousColumnUnionMask | candidateMask;
+
+            if (leftMask >= 0 && !hasPositivePrediction(candidateMask | leftMask)) return false;
+
+            if (!canReachPositiveColumnUnion(nextColumnUnionMask | futureLockedMask, futureUnlocked)) {
+                return false;
+            }
+
+            if (column === columns - 1 && firstMaskInRow >= 0 && !hasPositivePrediction(candidateMask | firstMaskInRow)) {
+                return false;
+            }
+
+            placedMasks[row][column] = candidateMask;
+            columnUnionMasks[column] = nextColumnUnionMask;
+
+            if (await tryPlace(position + 1)) return true;
+
+            placedMasks[row][column] = -1;
+            columnUnionMasks[column] = previousColumnUnionMask;
+            return false;
+        };
+
+        if (isLocked) {
+            const lockedMask = getPitchClassMask(currentMatrix[row][column]);
+            return tryCandidate(lockedMask);
+        }
+
+        // Unlocked cell: collect valid candidates
+        const validCandidateIndexes: number[] = [];
+        for (let i = 0; i < candidates.length; i += 1) {
+            const candidateMask = candidates[i].mask;
+            const nextColumnUnionMask = previousColumnUnionMask | candidateMask;
+            if (leftMask >= 0 && !hasPositivePrediction(candidateMask | leftMask)) continue;
+            if (!canReachPositiveColumnUnion(nextColumnUnionMask | futureLockedMask, futureUnlocked)) continue;
+            if (column === columns - 1 && firstMaskInRow >= 0 && !hasPositivePrediction(candidateMask | firstMaskInRow)) continue;
+            validCandidateIndexes.push(i);
+        }
+
+        const leftCandidateIndex = leftMask >= 0
+            ? candidates.findIndex(c => c.mask === leftMask)
+            : -1;
+
+        for (const i of getWeightedCandidateOrder(candidates, validCandidateIndexes, leftCandidateIndex, stiffness, stasisWeight, random)) {
+            ensureNotCancelled(shouldCancel);
+            placedMasks[row][column] = candidates[i].mask;
+            columnUnionMasks[column] = previousColumnUnionMask | candidates[i].mask;
+
+            if (await tryPlace(position + 1)) return true;
+
+            placedMasks[row][column] = -1;
+            columnUnionMasks[column] = previousColumnUnionMask;
+        }
+
+        return false;
+    };
+
+    onProgress?.({ progress: 0, message: `Solving ${rows}×${columns} matrix...` });
+    const found = await tryPlace(0);
+    if (!found) return null;
+
+    return {
+        matrix: Array.from({ length: rows }, (_, r) =>
+            Array.from({ length: columns }, (_, c) => {
+                if (lockedCells[r]?.[c] && currentMatrix[r]?.[c]) {
+                    return currentMatrix[r][c];
+                }
+                const mask = placedMasks[r][c];
+                // Find the candidate whose mask matches
+                const candidate = candidates.find(cd => cd.mask === mask);
+                return candidate ? candidate.chord : createChordFromMask(mask);
+            })
+        ),
+        candidateCount: candidates.length,
+        seed: normalizedSeed,
+    };
 }
 
 export async function generateRandomPitchClassMatrix({
