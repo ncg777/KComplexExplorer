@@ -11,6 +11,7 @@ interface MatrixBoardProps {
     predictions: SentimentPredictionMap;
     onCellClick: (row: number, col: number) => void;
     onLockToggle: (row: number, col: number) => void;
+    onPlayChord: (chord: PCS12) => void;
 }
 
 function formatPitchClasses(chord: PCS12): string {
@@ -39,6 +40,7 @@ const MatrixBoard: React.FC<MatrixBoardProps> = ({
     predictions,
     onCellClick,
     onLockToggle,
+    onPlayChord,
 }) => {
     const rows = matrix.length;
     const cols = matrix[0]?.length ?? 0;
@@ -70,17 +72,33 @@ const MatrixBoard: React.FC<MatrixBoardProps> = ({
                         const pcs = formatPitchClasses(chord);
 
                         return (
-                            <button
+                            <div
                                 key={`cell-${rIdx}-${cIdx}`}
-                                type="button"
-                                className={`matrix-cell ${sentClass}${isSelected ? ' selected' : ''}${isLocked ? ' locked' : ''}`}
-                                onClick={() => onCellClick(rIdx, cIdx)}
-                                title={`${forte} (${pcs})${isLocked ? ' — locked' : ''}`}
+                                className="matrix-cell-frame"
                             >
-                                <span className="matrix-cell-forte">{forte}</span>
-                                <span className="matrix-cell-pcs">{pcs}</span>
-                                {isLocked && <span className="matrix-cell-lock" aria-label="locked">🔒</span>}
-                            </button>
+                                <button
+                                    type="button"
+                                    className={`matrix-cell ${sentClass}${isSelected ? ' selected' : ''}${isLocked ? ' locked' : ''}`}
+                                    onClick={() => onCellClick(rIdx, cIdx)}
+                                    title={`${forte} (${pcs})${isLocked ? ' — locked' : ''}`}
+                                >
+                                    <span className="matrix-cell-forte">{forte}</span>
+                                    <span className="matrix-cell-pcs">{pcs}</span>
+                                    {isLocked && <span className="matrix-cell-lock" aria-label="locked">🔒</span>}
+                                </button>
+                                <button
+                                    type="button"
+                                    className="matrix-cell-play"
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        onPlayChord(chord);
+                                    }}
+                                    title={`Play ${forte}`}
+                                    aria-label={`Play ${forte}`}
+                                >
+                                    ▶
+                                </button>
+                            </div>
                         );
                     })
                 )}

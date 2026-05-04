@@ -43,6 +43,10 @@
     touch-action: manipulation;
 }
 
+.matrix-cell-frame {
+    position: relative;
+}
+
 .matrix-cell:active {
     opacity: 0.8;
 }
@@ -93,6 +97,31 @@
     right: 3px;
     font-size: 0.6rem;
     line-height: 1;
+}
+
+.matrix-cell-play {
+    position: absolute;
+    top: 2px;
+    left: 3px;
+    width: 1.2rem;
+    height: 1.2rem;
+    border: 1px solid #666;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.5);
+    color: #ddd;
+    font-size: 0.65rem;
+    line-height: 1;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.matrix-cell-play:hover {
+    border-color: #6ea8fe;
+    color: white;
 }
 
 /* ===== Column union row ===== */
@@ -157,6 +186,13 @@
 
 .cell-editor-candidate {
     display: flex;
+    align-items: stretch;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.cell-editor-candidate-button {
+    display: flex;
     align-items: center;
     gap: 8px;
     padding: 8px 10px;
@@ -166,15 +202,15 @@
     color: white;
     cursor: pointer;
     text-align: left;
+    flex: 1;
     width: 100%;
     transition: border-color 0.15s, background 0.15s;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
-    margin-bottom: 4px;
 }
 
-.cell-editor-candidate:hover,
-.cell-editor-candidate:focus {
+.cell-editor-candidate-button:hover,
+.cell-editor-candidate-button:focus {
     border-color: #6ea8fe;
     background: #313131;
     outline: none;
@@ -209,6 +245,24 @@
     font-size: 0.75rem;
     color: #aaa;
     white-space: nowrap;
+}
+
+.cell-editor-candidate-play {
+    min-width: 2rem;
+    border: 1px solid #555;
+    border-radius: 6px;
+    background: #1f1f1f;
+    color: #ddd;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.cell-editor-candidate-play:hover,
+.cell-editor-candidate-play:focus {
+    border-color: #6ea8fe;
+    color: white;
+    background: #2a2a2a;
+    outline: none;
 }
 
 .cell-editor-constraint {

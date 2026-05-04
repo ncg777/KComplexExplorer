@@ -25,7 +25,7 @@
     z-index: 1; /* To overlap the white keys */
 }
 
-.selected::after {
+.piano-key.selected::after {
     content: "∈";
     position: absolute;
     bottom: -17px;

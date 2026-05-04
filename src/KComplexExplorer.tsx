@@ -485,10 +485,24 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         const vel = Math.sqrt(1.0/chord.getK());
         synth.triggerAttackRelease(nums.map(pc => Tone.Frequency(pc + 72, "midi").toNote()), 1, now, vel);
     },[synth]);
+
+    const getChordMatrixLabel = useCallback((chord: PCS12) => (
+        chord.getCommonName() || chord.toString()
+    ), []);
     
     const copyToClipboard = useCallback(async (text: string) => {
         await navigator.clipboard.writeText(text);
     },[]);
+
+    const copyMatrixToClipboard = useCallback(async () => {
+        if (!matrixData) return;
+
+        const text = matrixData
+            .map(row => row.map(chord => getChordMatrixLabel(chord)).join('\t'))
+            .join('\n');
+
+        await copyToClipboard(text);
+    }, [copyToClipboard, getChordMatrixLabel, matrixData]);
 
     const updateSentiment = useCallback((chord: PCS12, sentiment: SentimentValue) => {
         const forte = chord.toString();
@@ -1606,6 +1620,15 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                 )}
                             </Button>
                             <Button
+                                size="sm"
+                                variant="outline-info"
+                                onClick={copyMatrixToClipboard}
+                                disabled={isBusy || !matrixData}
+                                title="Copy the matrix as tab-separated chord names"
+                            >
+                                📋 Copy names
+                            </Button>
+                            <Button
                                 variant="outline-danger"
                                 onClick={() => {
                                     setMatrixData(null);
@@ -1628,6 +1651,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                             predictions={predictedSentiments}
                             onCellClick={handleCellClick}
                             onLockToggle={handleLockToggle}
+                            onPlayChord={playChordSimul}
                         />
                     ) : (
                         <div style={{ color: '#888', fontSize: '0.9rem', padding: '8px 0' }}>
@@ -1782,20 +1806,36 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                                         const sentClass = predictedSentiments[cand.forte] === 1 ? 'positive'
                                                             : predictedSentiments[cand.forte] === -1 ? 'negative' : 'neutral';
                                                         return (
-                                                            <button
+                                                            <div
                                                                 key={cand.forte}
-                                                                type="button"
                                                                 className={`cell-editor-candidate ${sentClass}`}
-                                                                onClick={() => applyCandidate(cand)}
                                                             >
-                                                                <span className="cell-editor-candidate-forte">{cand.forte}</span>
-                                                                <span className="cell-editor-candidate-pcs">
-                                                                    {cand.chord.asSequence().map(pc => pc < 10 ? pc : pc === 10 ? 'T' : 'E').join('')}
-                                                                </span>
-                                                                <span className="cell-editor-candidate-score">
-                                                                    {cand.score.toFixed(2)}
-                                                                </span>
-                                                            </button>
+                                                                <button
+                                                                    type="button"
+                                                                    className="cell-editor-candidate-button"
+                                                                    onClick={() => applyCandidate(cand)}
+                                                                >
+                                                                    <span className="cell-editor-candidate-forte">{cand.forte}</span>
+                                                                    <span className="cell-editor-candidate-pcs">
+                                                                        {cand.chord.asSequence().map(pc => pc < 10 ? pc : pc === 10 ? 'T' : 'E').join('')}
+                                                                    </span>
+                                                                    <span className="cell-editor-candidate-score">
+                                                                        {cand.score.toFixed(2)}
+                                                                    </span>
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    className="cell-editor-candidate-play"
+                                                                    onClick={(event) => {
+                                                                        event.stopPropagation();
+                                                                        playChordSimul(cand.chord);
+                                                                    }}
+                                                                    title={`Play ${cand.forte}`}
+                                                                    aria-label={`Play ${cand.forte}`}
+                                                                >
+                                                                    ▶
+                                                                </button>
+                                                            </div>
                                                         );
                                                     })}
                                                 </div>
