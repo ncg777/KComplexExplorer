@@ -1,10 +1,25 @@
 import React from 'react';
 import { ListGroup, OverlayTrigger, Popover, Button } from 'react-bootstrap';
-import { PCS12 } from 'ultra-mega-enumerator';
+import { PCS12, ImmutableCombination } from 'ultra-mega-enumerator';
 import { getIntervalVectorEntropyMetrics } from './intervalVectorEntropy';
 import { getCyclicalMean } from './cyclicalMean';
 import { SentimentValue } from './pcsSentiment';
 import { PredictedSentimentValue } from './pcsSentimentModel';
+
+function getSpan(chord: PCS12): number {
+    const pcs = chord.combinationString().split(' ').filter(Boolean).map(Number);
+    if (pcs.length < 2) return 0;
+    return Math.max(...pcs) - Math.min(...pcs);
+}
+
+function getComplementForteNumber(chord: PCS12): string {
+    const pcs = chord.combinationString().split(' ').filter(Boolean).map(Number);
+    const pcsSet = new Set(pcs);
+    const complement = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].filter(x => !pcsSet.has(x));
+    const ic = ImmutableCombination.createWithSizeAndSet(12, new Set(complement));
+    const identified = PCS12.identify(ic);
+    return identified ? identified.getForteNumber() : '';
+}
 
 interface ChordListItemProps {
     chord: PCS12;
@@ -28,10 +43,14 @@ interface ChordListItemProps {
 export const ChordDetails: React.FC<{ chord: PCS12 }> = ({ chord }) => {
     const { entropy, level } = getIntervalVectorEntropyMetrics(chord);
     const cyclicalMean = getCyclicalMean(chord);
+    const span = getSpan(chord);
+    const complementForte = getComplementForteNumber(chord);
     return (
         <>
             <strong>Common name(s): </strong>{chord.getCommonName() || 'None'}<br />
             <strong>Pitch classes: </strong>{chord.combinationString()}<br />
+            <strong>Span: </strong>{span}<br />
+            <strong>Complement: </strong>{complementForte}<br />
             <strong>Intervals: </strong>{chord.getIntervals().map(x => String(x)).join(" ")}<br />
             <strong>Interval vector: </strong>{chord.getIntervalVector()?.join(' ') || '[]'}<br />
             <strong>Interval vector entropy: </strong>{entropy.toFixed(3)} ({level})<br />
@@ -62,6 +81,8 @@ const ChordListItem: React.FC<ChordListItemProps> = ({
 }) => {
     const forteStr = chord.toString();
     const isZChord = forteStr.toLowerCase().includes('z');
+    const span = getSpan(chord);
+    const complementForte = getComplementForteNumber(chord);
 
     return (
     <OverlayTrigger
@@ -140,6 +161,7 @@ const ChordListItem: React.FC<ChordListItemProps> = ({
             className={isActive ? 'active' : ''}
         >
             {forteStr}
+            <span className="chord-list-meta"> (span:{span}, ~{complementForte})</span>
         </ListGroup.Item>
     </OverlayTrigger>
     );
