@@ -19,7 +19,14 @@ export function getCyclicalMean(chord: PCS12): { value: number; nearestNote: str
     sumY += Math.sin(angle);
   }
 
-  const meanAngle = Math.atan2(sumY / pcs.length, sumX / pcs.length);
+  const avgX = sumX / pcs.length;
+  const avgY = sumY / pcs.length;
+  const r = Math.hypot(avgX, avgY);
+
+  // When the mean resultant vector is effectively zero the mean direction is undefined.
+  if (r < 1e-10) return null;
+
+  const meanAngle = Math.atan2(avgY, avgX);
   const raw = (meanAngle * 12) / (2 * Math.PI);
   const value = ((raw % 12) + 12) % 12;
   const nearestNote = NOTE_NAMES[Math.round(value) % 12];
