@@ -23,7 +23,7 @@ function getComplementForteNumber(chord: PCS12): string {
     const complement = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].filter(x => !pcsSet.has(x));
     const ic = ImmutableCombination.createWithSizeAndSet(12, new Set(complement));
     const identified = PCS12.identify(ic);
-    return identified ? identified.getForteNumber() : '';
+    return identified ? identified.toString() : '';
 }
 
 interface ChordListItemProps {
