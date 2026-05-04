@@ -24,7 +24,8 @@
   },
   "scripts": {
     "start": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "test": "vitest run"
   },
   "eslintConfig": {
     "extends": [
@@ -54,6 +55,7 @@
     "@testing-library/dom": "^10.4.0",
     "@types/react-bootstrap": "^0.32.37",
     "@vitejs/plugin-react": "^4.5.1",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "vitest": "^4.1.5"
   }
 }

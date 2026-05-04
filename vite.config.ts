@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import packageJson from './package.json';
@@ -21,5 +21,8 @@ export default defineConfig({
   build: {
     outDir: 'docs', // or 'build' if you want to match CRA
   },
-  base: '/KComplexExplorer/'
+  base: '/KComplexExplorer/',
+  test: {
+    environment: 'node',
+  },
 });
