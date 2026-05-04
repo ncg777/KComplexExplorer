@@ -86,8 +86,6 @@ const ChordListItem: React.FC<ChordListItemProps> = ({
 }) => {
     const forteStr = chord.toString();
     const isZChord = forteStr.toLowerCase().includes('z');
-    const span = getSpan(chord);
-    const complementForte = getComplementForteNumber(chord);
 
     return (
     <OverlayTrigger
@@ -166,7 +164,6 @@ const ChordListItem: React.FC<ChordListItemProps> = ({
             className={isActive ? 'active' : ''}
         >
             {forteStr}
-            <span className="chord-list-meta"> (span:{span}, ~{complementForte})</span>
         </ListGroup.Item>
     </OverlayTrigger>
     );
