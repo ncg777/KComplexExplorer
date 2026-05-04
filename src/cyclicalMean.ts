@@ -8,7 +8,7 @@ const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 
  * Returns null for empty sets.
  */
 export function getCyclicalMean(chord: PCS12): { value: number; nearestNote: string } | null {
-  const pcs = chord.getCombinationAsArray();
+  const pcs = chord.asSequence();
   if (pcs.length === 0) return null;
 
   let sumX = 0;
