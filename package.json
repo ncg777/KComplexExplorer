@@ -1,7 +1,7 @@
 {
   "name": "k-Complex-explorer",
   "homepage": "https://ncg777.github.io/KComplexExplorer",
-  "version": "2026.4.26",
+  "version": "2026.5.9",
   "private": false,
   "dependencies": {
     "@tensorflow/tfjs": "^4.22.0",

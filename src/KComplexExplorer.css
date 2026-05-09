@@ -410,6 +410,11 @@ h4 {
     min-width: 100px;
 }
 
+.random-matrix-field-checkbox {
+    min-width: 280px;
+    flex: 1 1 280px;
+}
+
 .random-matrix-field-slider {
     min-width: 220px;
     flex: 1 1 220px;
@@ -419,6 +424,12 @@ h4 {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+}
+
+.matrix-score-summary {
+    margin-bottom: 10px;
+    display: grid;
+    gap: 4px;
 }
 
 .random-matrix-output {

@@ -16,6 +16,7 @@ export interface RandomPitchClassMatrixSearchOptions {
     stiffness?: number;
     stasisWeight?: number;
     seed?: number;
+    optimizationAttempts?: number;
     shouldCancel?: () => boolean;
     onProgress?: (progress: RandomPitchClassMatrixProgress) => void;
 }
@@ -24,6 +25,18 @@ export interface RandomPitchClassMatrixSearchResult {
     matrix: PCS12[][];
     candidateCount: number;
     seed: number;
+    metrics: MatrixSentimentMetrics;
+    optimizationAttempts: number;
+}
+
+export interface MatrixSentimentMetrics {
+    meanCellScore: number;
+    meanHorizontalUnionScore: number;
+    meanColumnUnionScore: number;
+    overallMeanConfidence: number;
+    cellCount: number;
+    horizontalUnionCount: number;
+    columnCount: number;
 }
 
 export class RandomPitchClassMatrixSearchCancelledError extends Error {
@@ -51,6 +64,7 @@ export interface SolvePartialMatrixOptions {
     stiffness?: number;
     stasisWeight?: number;
     seed?: number;
+    optimizationAttempts?: number;
     currentMatrix: PCS12[][];
     lockedCells: boolean[][];
     shouldCancel?: () => boolean;
@@ -58,6 +72,14 @@ export interface SolvePartialMatrixOptions {
 }
 
 export interface SolvePartialMatrixResult {
+    matrix: PCS12[][];
+    candidateCount: number;
+    seed: number;
+    metrics: MatrixSentimentMetrics;
+    optimizationAttempts: number;
+}
+
+interface MatrixSearchSingleAttemptResult {
     matrix: PCS12[][];
     candidateCount: number;
     seed: number;
@@ -136,6 +158,132 @@ export function computeAttractiveCandidates(
     predictionScores: SentimentScoreMap = {},
 ): MatrixCandidate[] {
     return getAttractiveCandidates(upperBound, noteCount, predictions, predictionScores);
+}
+
+function getSentimentScoreForChord(chord: PCS12, predictionScores: SentimentScoreMap): number {
+    const score = predictionScores[chord.toString()];
+    return Number.isFinite(score) ? score : 0;
+}
+
+function getMean(values: number[]): number {
+    if (values.length === 0) return 0;
+    return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+export function computeMatrixSentimentMetrics(
+    matrix: PCS12[][],
+    predictionScores: SentimentScoreMap,
+): MatrixSentimentMetrics {
+    const rows = matrix.length;
+    const cols = matrix[0]?.length ?? 0;
+
+    if (rows === 0 || cols === 0) {
+        return {
+            meanCellScore: 0,
+            meanHorizontalUnionScore: 0,
+            meanColumnUnionScore: 0,
+            overallMeanConfidence: 0,
+            cellCount: 0,
+            horizontalUnionCount: 0,
+            columnCount: 0,
+        };
+    }
+
+    const cellScores = matrix.flatMap(row => row.map(chord => getSentimentScoreForChord(chord, predictionScores)));
+    const horizontalUnionScores: number[] = [];
+
+    if (cols > 1) {
+        for (const row of matrix) {
+            for (let col = 0; col < cols; col += 1) {
+                const currentMask = getPitchClassMask(row[col]);
+                const nextMask = getPitchClassMask(row[(col + 1) % cols]);
+                const unionChord = createChordFromMask(currentMask | nextMask);
+                horizontalUnionScores.push(getSentimentScoreForChord(unionChord, predictionScores));
+            }
+        }
+    }
+
+    const columnUnionScores = Array.from({ length: cols }, (_, col) => {
+        const unionMask = computeColumnUnionMask(matrix, col);
+        return getSentimentScoreForChord(createChordFromMask(unionMask), predictionScores);
+    });
+
+    const meanCellScore = getMean(cellScores);
+    const meanHorizontalUnionScore = getMean(horizontalUnionScores);
+    const meanColumnUnionScore = getMean(columnUnionScores);
+
+    return {
+        meanCellScore,
+        meanHorizontalUnionScore,
+        meanColumnUnionScore,
+        overallMeanConfidence: (meanCellScore + meanHorizontalUnionScore + meanColumnUnionScore) / 3,
+        cellCount: cellScores.length,
+        horizontalUnionCount: horizontalUnionScores.length,
+        columnCount: columnUnionScores.length,
+    };
+}
+
+function getOptimizationAttemptCount(optimizationAttempts?: number): number {
+    if (optimizationAttempts === undefined) {
+        return 1;
+    }
+
+    if (!Number.isInteger(optimizationAttempts) || optimizationAttempts < 1) {
+        throw new Error('Optimization attempts must be a positive integer.');
+    }
+
+    return optimizationAttempts;
+}
+
+function getOptimizationAttemptSeed(baseSeed: number, attemptIndex: number): number {
+    if (attemptIndex === 0) {
+        return normalizeSeed(baseSeed);
+    }
+
+    return normalizeSeed(baseSeed + Math.imul(attemptIndex, 0x9E3779B1));
+}
+
+function buildOptimizationProgress(
+    progress: RandomPitchClassMatrixProgress,
+    attemptIndex: number,
+    optimizationAttempts: number,
+    bestMetrics: MatrixSentimentMetrics | null,
+): RandomPitchClassMatrixProgress {
+    if (optimizationAttempts <= 1) {
+        return progress;
+    }
+
+    const overallProgress = Math.round(((attemptIndex + (progress.progress / 100)) / optimizationAttempts) * 100);
+    const bestScore = bestMetrics ? ` Best mean confidence ${bestMetrics.overallMeanConfidence.toFixed(3)}.` : '';
+
+    return {
+        progress: overallProgress,
+        message: `Optimizing matrix ${attemptIndex + 1}/${optimizationAttempts}.${bestScore} ${progress.message}`.trim(),
+    };
+}
+
+function buildMatrixSearchResult(
+    result: MatrixSearchSingleAttemptResult,
+    predictionScores: SentimentScoreMap,
+    optimizationAttempts: number,
+): RandomPitchClassMatrixSearchResult {
+    return {
+        ...result,
+        metrics: computeMatrixSentimentMetrics(result.matrix, predictionScores),
+        optimizationAttempts,
+    };
+}
+
+function buildSolvePartialMatrixResult(
+    result: MatrixSearchSingleAttemptResult,
+    predictionScores: SentimentScoreMap,
+    optimizationAttempts: number,
+): SolvePartialMatrixResult {
+    return {
+        ...result,
+        metrics: computeMatrixSentimentMetrics(result.matrix, predictionScores),
+        optimizationAttempts,
+    };
 }
 
 function normalizeSeed(seed: number): number {
@@ -263,7 +411,7 @@ export function computeValidCandidatesForCell(
     });
 }
 
-export async function solvePartialMatrix({
+async function solvePartialMatrixSingleAttempt({
     upperBound,
     noteCount,
     predictions,
@@ -275,7 +423,7 @@ export async function solvePartialMatrix({
     lockedCells,
     shouldCancel,
     onProgress,
-}: SolvePartialMatrixOptions): Promise<SolvePartialMatrixResult | null> {
+}: SolvePartialMatrixOptions): Promise<MatrixSearchSingleAttemptResult | null> {
     const rows = currentMatrix.length;
     const columns = currentMatrix[0]?.length ?? 0;
 
@@ -455,9 +603,127 @@ export async function generateRandomPitchClassMatrix({
     stiffness = 0,
     stasisWeight = 0.1,
     seed = Date.now(),
+    optimizationAttempts,
     shouldCancel,
     onProgress,
 }: RandomPitchClassMatrixSearchOptions): Promise<RandomPitchClassMatrixSearchResult> {
+    const attemptCount = getOptimizationAttemptCount(optimizationAttempts);
+    const baseSeed = normalizeSeed(seed);
+    let bestResult: RandomPitchClassMatrixSearchResult | null = null;
+
+    for (let attemptIndex = 0; attemptIndex < attemptCount; attemptIndex += 1) {
+        ensureNotCancelled(shouldCancel);
+
+        const attemptSeed = getOptimizationAttemptSeed(baseSeed, attemptIndex);
+        const attemptResult = await generateRandomPitchClassMatrixSingleAttempt({
+            upperBound,
+            rows,
+            columns,
+            noteCount,
+            predictions,
+            predictionScores,
+            stiffness,
+            stasisWeight,
+            seed: attemptSeed,
+            shouldCancel,
+            onProgress: progress => onProgress?.(
+                buildOptimizationProgress(progress, attemptIndex, attemptCount, bestResult?.metrics ?? null)
+            ),
+        });
+
+        if (!attemptResult) {
+            continue;
+        }
+
+        const candidateResult = buildMatrixSearchResult(attemptResult, predictionScores, attemptCount);
+        if (!bestResult || candidateResult.metrics.overallMeanConfidence > bestResult.metrics.overallMeanConfidence) {
+            bestResult = candidateResult;
+            onProgress?.({
+                progress: Math.round(((attemptIndex + 1) / attemptCount) * 100),
+                message: attemptCount > 1
+                    ? `Optimizing matrix ${attemptIndex + 1}/${attemptCount}. Best mean confidence ${bestResult.metrics.overallMeanConfidence.toFixed(3)}.`
+                    : 'Matrix found.',
+            });
+        }
+    }
+
+    if (!bestResult) {
+        throw new Error('No matrix satisfies the current dimensions, cyclic horizontal unions, and global column-union sentiment constraints.');
+    }
+
+    return bestResult;
+}
+
+export async function solvePartialMatrix({
+    upperBound,
+    noteCount,
+    predictions,
+    predictionScores = {},
+    stiffness = 0,
+    stasisWeight = 0.1,
+    seed = Date.now(),
+    optimizationAttempts,
+    currentMatrix,
+    lockedCells,
+    shouldCancel,
+    onProgress,
+}: SolvePartialMatrixOptions): Promise<SolvePartialMatrixResult | null> {
+    const attemptCount = getOptimizationAttemptCount(optimizationAttempts);
+    const baseSeed = normalizeSeed(seed);
+    let bestResult: SolvePartialMatrixResult | null = null;
+
+    for (let attemptIndex = 0; attemptIndex < attemptCount; attemptIndex += 1) {
+        ensureNotCancelled(shouldCancel);
+
+        const attemptSeed = getOptimizationAttemptSeed(baseSeed, attemptIndex);
+        const attemptResult = await solvePartialMatrixSingleAttempt({
+            upperBound,
+            noteCount,
+            predictions,
+            predictionScores,
+            stiffness,
+            stasisWeight,
+            seed: attemptSeed,
+            currentMatrix,
+            lockedCells,
+            shouldCancel,
+            onProgress: progress => onProgress?.(
+                buildOptimizationProgress(progress, attemptIndex, attemptCount, bestResult?.metrics ?? null)
+            ),
+        });
+
+        if (!attemptResult) {
+            continue;
+        }
+
+        const candidateResult = buildSolvePartialMatrixResult(attemptResult, predictionScores, attemptCount);
+        if (!bestResult || candidateResult.metrics.overallMeanConfidence > bestResult.metrics.overallMeanConfidence) {
+            bestResult = candidateResult;
+            onProgress?.({
+                progress: Math.round(((attemptIndex + 1) / attemptCount) * 100),
+                message: attemptCount > 1
+                    ? `Optimizing repair ${attemptIndex + 1}/${attemptCount}. Best mean confidence ${bestResult.metrics.overallMeanConfidence.toFixed(3)}.`
+                    : 'Matrix repaired.',
+            });
+        }
+    }
+
+    return bestResult;
+}
+
+async function generateRandomPitchClassMatrixSingleAttempt({
+    upperBound,
+    rows,
+    columns,
+    noteCount,
+    predictions,
+    predictionScores = {},
+    stiffness = 0,
+    stasisWeight = 0.1,
+    seed = Date.now(),
+    shouldCancel,
+    onProgress,
+}: RandomPitchClassMatrixSearchOptions): Promise<MatrixSearchSingleAttemptResult | null> {
     if (!Number.isInteger(rows) || rows < 1 || !Number.isInteger(columns) || columns < 1) {
         throw new Error('Matrix dimensions must be positive integers.');
     }
@@ -622,7 +888,7 @@ export async function generateRandomPitchClassMatrix({
 
     const found = await tryPlace(0);
     if (!found) {
-        throw new Error('No matrix satisfies the current dimensions, cyclic horizontal unions, and global column-union sentiment constraints.');
+        return null;
     }
 
     return {

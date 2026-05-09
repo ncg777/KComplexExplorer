@@ -51,10 +51,12 @@ import {
     generateRandomPitchClassMatrix,
     RandomPitchClassMatrixSearchCancelledError,
     computeAttractiveCandidates,
+    computeMatrixSentimentMetrics,
     computeValidCandidatesForCell,
     computeColumnUnionMask,
     computeChordFromMask,
     computePitchClassMask,
+    MatrixSentimentMetrics,
     solvePartialMatrix,
     MatrixCandidate,
 } from './randomPitchClassMatrix';
@@ -151,7 +153,10 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const [matrixNoteCount, setMatrixNoteCount] = useState(3);
     const [matrixStiffness, setMatrixStiffness] = useState(0);
     const [matrixStasisWeight, setMatrixStasisWeight] = useState(0.1);
+    const [matrixOptimizeConfidence, setMatrixOptimizeConfidence] = useState(false);
+    const [matrixOptimizationAttempts, setMatrixOptimizationAttempts] = useState(8);
     const [matrixData, setMatrixData] = useState<PCS12[][] | null>(null);
+    const [matrixMetrics, setMatrixMetrics] = useState<MatrixSentimentMetrics | null>(null);
     const [lockedCells, setLockedCells] = useState<boolean[][]>([]);
     const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
     const [showCellEditor, setShowCellEditor] = useState(false);
@@ -187,6 +192,11 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const filteredSubsets = useMemo(() =>
         subsets.filter(c => matchesSearch(c, subsetSearch)),
         [subsets, subsetSearch, matchesSearch]
+    );
+
+    const hasMatrixOptimizationScores = useMemo(() =>
+        Object.values(predictedSentimentScores).some(score => Number.isFinite(score)),
+        [predictedSentimentScores]
     );
 
     const selectedPresetSummary = useMemo(() => (
@@ -317,6 +327,15 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     useEffect(() => {
         trainingStatsRef.current = trainingStats;
     }, [trainingStats]);
+
+    useEffect(() => {
+        if (!matrixData) {
+            setMatrixMetrics(null);
+            return;
+        }
+
+        setMatrixMetrics(computeMatrixSentimentMetrics(matrixData, predictedSentimentScores));
+    }, [matrixData, predictedSentimentScores]);
 
     useEffect(() => {
         if (skipSentimentRefreshRef.current) {
@@ -991,6 +1010,11 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
             return;
         }
 
+        if (matrixOptimizeConfidence && !hasMatrixOptimizationScores) {
+            setModelFeedback('Train or load the neural network before optimizing matrix sentiment confidence.');
+            return;
+        }
+
         cancelMatrixSearchRef.current = false;
         setMatrixData(null);
         setLockedCells([]);
@@ -1014,6 +1038,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                 predictionScores: predictedSentimentScores,
                 stiffness: matrixStiffness,
                 stasisWeight: matrixStasisWeight,
+                optimizationAttempts: matrixOptimizeConfidence ? matrixOptimizationAttempts : 1,
                 shouldCancel: () => cancelMatrixSearchRef.current,
                 onProgress: progress => setMatrixSearchState({
                     isSearching: true,
@@ -1026,7 +1051,9 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
             setLockedCells(Array.from({ length: matrixRowCount }, () => Array(matrixColumnCount).fill(false)));
             setModelFeedback(
                 `Generated a random ${matrixRowCount}×${matrixColumnCount} matrix from ${result.candidateCount} attractive candidates `
-                + `at β=${matrixStiffness.toFixed(1)}, stasis=${matrixStasisWeight.toFixed(2)}, seed=${result.seed}.`
+                + `at β=${matrixStiffness.toFixed(1)}, stasis=${matrixStasisWeight.toFixed(2)}, seed=${result.seed}. `
+                + `Mean confidence ${result.metrics.overallMeanConfidence.toFixed(3)}`
+                + (result.optimizationAttempts > 1 ? ` after ${result.optimizationAttempts} attempts.` : '.')
             );
             setMatrixSearchState({
                 isSearching: true,
@@ -1045,11 +1072,16 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                 setMatrixSearchState({ isSearching: false, progress: 0, message: '' });
             }, 250);
         }
-    }, [matrixColumnCount, matrixNoteCount, matrixRowCount, matrixStasisWeight, matrixStiffness, predictedSentimentScores, predictedSentiments, selectedScale]);
+    }, [hasMatrixOptimizationScores, matrixColumnCount, matrixNoteCount, matrixOptimizeConfidence, matrixOptimizationAttempts, matrixRowCount, matrixStasisWeight, matrixStiffness, predictedSentimentScores, predictedSentiments, selectedScale]);
 
     const handleRepairMatrix = useCallback(async () => {
         const upperBound = PCS12.parseForte(selectedScale);
         if (!upperBound || !matrixData) return;
+
+        if (matrixOptimizeConfidence && !hasMatrixOptimizationScores) {
+            setModelFeedback('Train or load the neural network before optimizing matrix sentiment confidence.');
+            return;
+        }
 
         cancelMatrixSearchRef.current = false;
         setModelFeedback('');
@@ -1063,6 +1095,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                 predictionScores: predictedSentimentScores,
                 stiffness: matrixStiffness,
                 stasisWeight: matrixStasisWeight,
+                optimizationAttempts: matrixOptimizeConfidence ? matrixOptimizationAttempts : 1,
                 currentMatrix: matrixData,
                 lockedCells,
                 shouldCancel: () => cancelMatrixSearchRef.current,
@@ -1074,7 +1107,11 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                 setMatrixData(result.matrix);
                 setSelectedCell(null);
                 setShowCellEditor(false);
-                setModelFeedback(`Matrix repaired. ${result.candidateCount} candidates available.`);
+                setModelFeedback(
+                    `Matrix repaired. ${result.candidateCount} candidates available. `
+                    + `Mean confidence ${result.metrics.overallMeanConfidence.toFixed(3)}`
+                    + (result.optimizationAttempts > 1 ? ` after ${result.optimizationAttempts} attempts.` : '.')
+                );
             } else {
                 setModelFeedback('No valid matrix found while respecting locked cells. Try unlocking some cells.');
             }
@@ -1088,7 +1125,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         } finally {
             window.setTimeout(() => setMatrixSearchState({ isSearching: false, progress: 0, message: '' }), 250);
         }
-    }, [lockedCells, matrixData, matrixNoteCount, matrixStasisWeight, matrixStiffness, predictedSentimentScores, predictedSentiments, pushMatrixHistory, selectedScale]);
+    }, [hasMatrixOptimizationScores, lockedCells, matrixData, matrixNoteCount, matrixOptimizeConfidence, matrixOptimizationAttempts, matrixStasisWeight, matrixStiffness, predictedSentimentScores, predictedSentiments, pushMatrixHistory, selectedScale]);
 
     const handleUndo = useCallback(() => {
         if (matrixHistory.length === 0) return;
@@ -1593,6 +1630,31 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                 disabled={isBusy}
                             />
                         </Form.Group>
+                        <Form.Group controlId="matrixOptimizeConfidence" className="random-matrix-field random-matrix-field-checkbox">
+                            <Form.Check
+                                type="checkbox"
+                                label="Optimize mean sentiment confidence"
+                                checked={matrixOptimizeConfidence}
+                                onChange={(e) => setMatrixOptimizeConfidence(e.target.checked)}
+                                disabled={isBusy || !hasMatrixOptimizationScores}
+                            />
+                            <Form.Text muted>
+                                {hasMatrixOptimizationScores
+                                    ? 'Select the best valid matrix across multiple seeded attempts.'
+                                    : 'Train or load the neural network to enable score-based optimization.'}
+                            </Form.Text>
+                        </Form.Group>
+                        <Form.Group controlId="matrixOptimizationAttempts" className="random-matrix-field">
+                            <Form.Label>Optimization attempts</Form.Label>
+                            <Form.Control
+                                type="number"
+                                min={1}
+                                step={1}
+                                value={matrixOptimizationAttempts}
+                                onChange={(e) => setMatrixOptimizationAttempts(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                                disabled={isBusy || !matrixOptimizeConfidence || !hasMatrixOptimizationScores}
+                            />
+                        </Form.Group>
                         <div className="random-matrix-actions">
                             <Button
                                 variant="warning"
@@ -1644,15 +1706,25 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                         </div>
                     </div>
                     {matrixData ? (
-                        <MatrixBoard
-                            matrix={matrixData}
-                            lockedCells={lockedCells}
-                            selectedCell={selectedCell}
-                            predictions={predictedSentiments}
-                            onCellClick={handleCellClick}
-                            onLockToggle={handleLockToggle}
-                            onPlayChord={playChordSimul}
-                        />
+                        <>
+                            {matrixMetrics && (
+                                <div className="sentiment-tool-stats matrix-score-summary">
+                                    <div><strong>Matrix mean confidence:</strong> {matrixMetrics.overallMeanConfidence.toFixed(3)}</div>
+                                    <div><strong>Cell mean:</strong> {matrixMetrics.meanCellScore.toFixed(3)}</div>
+                                    <div><strong>Cyclic row-union mean:</strong> {matrixMetrics.meanHorizontalUnionScore.toFixed(3)}</div>
+                                    <div><strong>Column-union mean:</strong> {matrixMetrics.meanColumnUnionScore.toFixed(3)}</div>
+                                </div>
+                            )}
+                            <MatrixBoard
+                                matrix={matrixData}
+                                lockedCells={lockedCells}
+                                selectedCell={selectedCell}
+                                predictions={predictedSentiments}
+                                onCellClick={handleCellClick}
+                                onLockToggle={handleLockToggle}
+                                onPlayChord={playChordSimul}
+                            />
+                        </>
                     ) : (
                         <div style={{ color: '#888', fontSize: '0.9rem', padding: '8px 0' }}>
                             Generate a matrix to see the visual editor.
