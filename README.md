@@ -15,7 +15,7 @@
 - **Sentiment Tracking:** Mark each pitch-class set as liked (+1), neutral (0), or disliked (-1) directly from its popup.
 - **CSV Export for ML Workflows:** Export the full catalog of pitch-class sets, their analysis metadata, and saved sentiments to CSV.
 - **TensorFlow Sentiment Prediction:** Train a TensorFlow.js neural network on the exported numerical fields, review ternary sentiment predictions, and import/export saved model weights.
-- **Constrained Matrix Generation:** Build random pitch-class matrices whose cells, cyclic horizontal unions, and full-column unions all remain attractively predicted, with a stiffness control that biases low-Hamming-distance transitions and a stasis control that keeps exact repetition rare but available.
+- **Constrained Matrix Generation:** Build random pitch-class matrices whose cells, all forward row-pair unions, and full-column unions all remain attractively predicted, with a stiffness control that biases low-Hamming-distance transitions and a stasis control that keeps exact repetition rare but available.
 - **Installable PWA:** KComplexExplorer is a Progressive Web App—install it as an app on your computer, phone, or tablet for offline use and a native experience.
 - **PCS12 Class Powered (from [ultra-mega-enumerator](https://github.com/ncg777/ultra-mega-enumerator)):**
   - Efficient identification, transposition, and rotation of sets.
@@ -32,7 +32,7 @@
 - **Intuitive GUI:** Interactively explore, select, and analyze sets through a responsive graphical interface.
 - **Local ML Loop:** Train the built-in neural network from your saved sentiment labels, keep predictions locally, and reuse exported weights later.
 - **Ternary Defuzzification:** Neural-network tanh outputs are interpreted as attractive only when strictly above `1/3`, neutral from `-1/3` through `1/3`, and repulsive below `-1/3`.
-- **Constraint-Driven Matrix Search:** The matrix generator backtracks across attractive predictions, checks cyclic row voice-leading and full-column unions together, and samples only currently valid candidates with a seeded PRNG. Nonzero Hamming-distance moves use `exp(-β · HammingDistance)`, while exact repeats use a separate stasis weight.
+- **Constraint-Driven Matrix Search:** The matrix generator backtracks across attractive predictions, checks all forward row-pair unions and full-column unions together, and samples only currently valid candidates with a seeded PRNG. Nonzero Hamming-distance moves use `exp(-β · HammingDistance)`, while exact repeats use a separate stasis weight.
 
 ## Installation & Usage
 

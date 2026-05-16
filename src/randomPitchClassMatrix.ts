@@ -31,11 +31,11 @@ export interface RandomPitchClassMatrixSearchResult {
 
 export interface MatrixSentimentMetrics {
     meanCellScore: number;
-    meanHorizontalUnionScore: number;
+    meanRowPairUnionScore: number;
     meanColumnUnionScore: number;
     overallMeanConfidence: number;
     cellCount: number;
-    horizontalUnionCount: number;
+    rowPairUnionCount: number;
     columnCount: number;
 }
 
@@ -180,25 +180,27 @@ export function computeMatrixSentimentMetrics(
     if (rows === 0 || cols === 0) {
         return {
             meanCellScore: 0,
-            meanHorizontalUnionScore: 0,
+            meanRowPairUnionScore: 0,
             meanColumnUnionScore: 0,
             overallMeanConfidence: 0,
             cellCount: 0,
-            horizontalUnionCount: 0,
+            rowPairUnionCount: 0,
             columnCount: 0,
         };
     }
 
     const cellScores = matrix.flatMap(row => row.map(chord => getSentimentScoreForChord(chord, predictionScores)));
-    const horizontalUnionScores: number[] = [];
+    const rowPairUnionScores: number[] = [];
 
     if (cols > 1) {
         for (const row of matrix) {
-            for (let col = 0; col < cols; col += 1) {
-                const currentMask = getPitchClassMask(row[col]);
-                const nextMask = getPitchClassMask(row[(col + 1) % cols]);
-                const unionChord = createChordFromMask(currentMask | nextMask);
-                horizontalUnionScores.push(getSentimentScoreForChord(unionChord, predictionScores));
+            for (let leftCol = 0; leftCol < cols - 1; leftCol += 1) {
+                const leftMask = getPitchClassMask(row[leftCol]);
+                for (let rightCol = leftCol + 1; rightCol < cols; rightCol += 1) {
+                    const rightMask = getPitchClassMask(row[rightCol]);
+                    const unionChord = createChordFromMask(leftMask | rightMask);
+                    rowPairUnionScores.push(getSentimentScoreForChord(unionChord, predictionScores));
+                }
             }
         }
     }
@@ -209,16 +211,16 @@ export function computeMatrixSentimentMetrics(
     });
 
     const meanCellScore = getMean(cellScores);
-    const meanHorizontalUnionScore = getMean(horizontalUnionScores);
+    const meanRowPairUnionScore = getMean(rowPairUnionScores);
     const meanColumnUnionScore = getMean(columnUnionScores);
 
     return {
         meanCellScore,
-        meanHorizontalUnionScore,
+        meanRowPairUnionScore,
         meanColumnUnionScore,
-        overallMeanConfidence: (meanCellScore + meanHorizontalUnionScore + meanColumnUnionScore) / 3,
+        overallMeanConfidence: (meanCellScore + meanRowPairUnionScore + meanColumnUnionScore) / 3,
         cellCount: cellScores.length,
-        horizontalUnionCount: horizontalUnionScores.length,
+        rowPairUnionCount: rowPairUnionScores.length,
         columnCount: columnUnionScores.length,
     };
 }
@@ -397,15 +399,18 @@ export function computeValidCandidatesForCell(
         }
     }
 
-    const leftMask = col > 0 && matrix[row][col - 1] ? getPitchClassMask(matrix[row][col - 1]) : -1;
-    const rightMask = col < cols - 1 && matrix[row][col + 1] ? getPitchClassMask(matrix[row][col + 1]) : -1;
-    const wrapMask = col === cols - 1 && cols > 1 && matrix[row][0] ? getPitchClassMask(matrix[row][0]) : -1;
+    const rowMasksExceptCurrent: number[] = [];
+    for (let c = 0; c < cols; c += 1) {
+        if (c !== col && matrix[row][c]) {
+            rowMasksExceptCurrent.push(getPitchClassMask(matrix[row][c]));
+        }
+    }
 
     return candidates.filter(candidate => {
         const mask = candidate.mask;
-        if (leftMask >= 0 && !hasPositivePrediction(mask | leftMask)) return false;
-        if (rightMask >= 0 && !hasPositivePrediction(mask | rightMask)) return false;
-        if (wrapMask >= 0 && !hasPositivePrediction(mask | wrapMask)) return false;
+        for (const rowMask of rowMasksExceptCurrent) {
+            if (!hasPositivePrediction(mask | rowMask)) return false;
+        }
         if (!hasPositivePrediction(colUnionWithoutCell | mask)) return false;
         return true;
     });
@@ -510,7 +515,6 @@ async function solvePartialMatrixSingleAttempt({
         const column = position % columns;
         const isLocked = !!(lockedCells[row]?.[column] && currentMatrix[row]?.[column]);
         const leftMask = column > 0 ? placedMasks[row][column - 1] : -1;
-        const firstMaskInRow = placedMasks[row][0];
         const previousColumnUnionMask = columnUnionMasks[column];
         const futureLockedMask = futureLockedMasks[column][row + 1];
         const futureUnlocked = futureUnlockedCounts[column][row + 1];
@@ -518,13 +522,11 @@ async function solvePartialMatrixSingleAttempt({
         const tryCandidate = async (candidateMask: number): Promise<boolean> => {
             const nextColumnUnionMask = previousColumnUnionMask | candidateMask;
 
-            if (leftMask >= 0 && !hasPositivePrediction(candidateMask | leftMask)) return false;
-
-            if (!canReachPositiveColumnUnion(nextColumnUnionMask | futureLockedMask, futureUnlocked)) {
-                return false;
+            for (let previousColumn = 0; previousColumn < column; previousColumn += 1) {
+                if (!hasPositivePrediction(candidateMask | placedMasks[row][previousColumn])) return false;
             }
 
-            if (column === columns - 1 && firstMaskInRow >= 0 && !hasPositivePrediction(candidateMask | firstMaskInRow)) {
+            if (!canReachPositiveColumnUnion(nextColumnUnionMask | futureLockedMask, futureUnlocked)) {
                 return false;
             }
 
@@ -548,9 +550,15 @@ async function solvePartialMatrixSingleAttempt({
         for (let i = 0; i < candidates.length; i += 1) {
             const candidateMask = candidates[i].mask;
             const nextColumnUnionMask = previousColumnUnionMask | candidateMask;
-            if (leftMask >= 0 && !hasPositivePrediction(candidateMask | leftMask)) continue;
+            let hasPositiveForwardPairs = true;
+            for (let previousColumn = 0; previousColumn < column; previousColumn += 1) {
+                if (!hasPositivePrediction(candidateMask | placedMasks[row][previousColumn])) {
+                    hasPositiveForwardPairs = false;
+                    break;
+                }
+            }
+            if (!hasPositiveForwardPairs) continue;
             if (!canReachPositiveColumnUnion(nextColumnUnionMask | futureLockedMask, futureUnlocked)) continue;
-            if (column === columns - 1 && firstMaskInRow >= 0 && !hasPositivePrediction(candidateMask | firstMaskInRow)) continue;
             validCandidateIndexes.push(i);
         }
 
@@ -648,7 +656,7 @@ export async function generateRandomPitchClassMatrix({
     }
 
     if (!bestResult) {
-        throw new Error('No matrix satisfies the current dimensions, cyclic horizontal unions, and global column-union sentiment constraints.');
+        throw new Error('No matrix satisfies the current dimensions, all forward row-pair unions, and global column-union sentiment constraints.');
     }
 
     return bestResult;
@@ -826,7 +834,6 @@ async function generateRandomPitchClassMatrixSingleAttempt({
         const row = Math.floor(position / columns);
         const column = position % columns;
         const leftIndex = column > 0 ? matrixIndexes[row][column - 1] : -1;
-        const firstIndexInRow = matrixIndexes[row][0];
         const previousColumnUnionMask = columnUnionMasks[column];
         const remainingRowsInColumn = rows - row - 1;
         const validCandidateIndexes: number[] = [];
@@ -835,19 +842,19 @@ async function generateRandomPitchClassMatrixSingleAttempt({
             const candidateMask = candidates[candidateIndex].mask;
             const nextColumnUnionMask = previousColumnUnionMask | candidateMask;
 
-            if (leftIndex >= 0 && !hasPositivePrediction(candidateMask | candidates[leftIndex].mask)) {
+            let hasPositiveForwardPairs = true;
+            for (let previousColumn = 0; previousColumn < column; previousColumn += 1) {
+                const previousIndex = matrixIndexes[row][previousColumn];
+                if (!hasPositivePrediction(candidateMask | candidates[previousIndex].mask)) {
+                    hasPositiveForwardPairs = false;
+                    break;
+                }
+            }
+            if (!hasPositiveForwardPairs) {
                 continue;
             }
 
             if (!canReachPositiveColumnUnion(nextColumnUnionMask, remainingRowsInColumn)) {
-                continue;
-            }
-
-            if (
-                column === columns - 1 &&
-                firstIndexInRow >= 0 &&
-                !hasPositivePrediction(candidateMask | candidates[firstIndexInRow].mask)
-            ) {
                 continue;
             }
 
