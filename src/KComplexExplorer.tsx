@@ -1571,7 +1571,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                 <div className="random-matrix-panel">
                     <div className="random-matrix-header">
                         <strong>Constrained matrix generator</strong>
-                        <span className="random-matrix-subtitle">Uses attractive model predictions with cyclic horizontal, global vertical, stiffness-weighted motion, and explicit stasis control.</span>
+                        <span className="random-matrix-subtitle">Uses attractive model predictions with forward row-pair unions, global vertical unions, stiffness-weighted motion, and explicit stasis control.</span>
                     </div>
                     <div className="random-matrix-controls">
                         <Form.Group controlId="matrixRows" className="random-matrix-field">
@@ -1711,7 +1711,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                 <div className="sentiment-tool-stats matrix-score-summary">
                                     <div><strong>Matrix mean confidence:</strong> {matrixMetrics.overallMeanConfidence.toFixed(3)}</div>
                                     <div><strong>Cell mean:</strong> {matrixMetrics.meanCellScore.toFixed(3)}</div>
-                                    <div><strong>Cyclic row-union mean:</strong> {matrixMetrics.meanHorizontalUnionScore.toFixed(3)}</div>
+                                    <div><strong>Forward row-pair mean:</strong> {matrixMetrics.meanRowPairUnionScore.toFixed(3)}</div>
                                     <div><strong>Column-union mean:</strong> {matrixMetrics.meanColumnUnionScore.toFixed(3)}</div>
                                 </div>
                             )}
@@ -2077,7 +2077,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                     </p>
                     <p>
                         Once a model is loaded, the <strong>Constrained matrix generator</strong> can randomly
-                        backtrack through attractive model predictions until every cell, every cyclic horizontal union,
+                        backtrack through attractive model predictions until every cell, every forward row pair union,
                         and every full-column union is attractive within the selected upper bound. The <strong>Stiffness
                         (β)</strong> slider biases lower-Hamming-distance successors, while <strong>Stasis probability</strong>
                         controls how willing the machine is to repeat the exact same set on the next beat.
