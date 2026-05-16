@@ -522,8 +522,7 @@ async function solvePartialMatrixSingleAttempt({
         const tryCandidate = async (candidateMask: number): Promise<boolean> => {
             const nextColumnUnionMask = previousColumnUnionMask | candidateMask;
 
-            if (leftMask >= 0 && !hasPositivePrediction(candidateMask | leftMask)) return false;
-            for (let previousColumn = 0; previousColumn < column - 1; previousColumn += 1) {
+            for (let previousColumn = 0; previousColumn < column; previousColumn += 1) {
                 if (!hasPositivePrediction(candidateMask | placedMasks[row][previousColumn])) return false;
             }
 
@@ -551,9 +550,8 @@ async function solvePartialMatrixSingleAttempt({
         for (let i = 0; i < candidates.length; i += 1) {
             const candidateMask = candidates[i].mask;
             const nextColumnUnionMask = previousColumnUnionMask | candidateMask;
-            if (leftMask >= 0 && !hasPositivePrediction(candidateMask | leftMask)) continue;
             let hasPositiveForwardPairs = true;
-            for (let previousColumn = 0; previousColumn < column - 1; previousColumn += 1) {
+            for (let previousColumn = 0; previousColumn < column; previousColumn += 1) {
                 if (!hasPositivePrediction(candidateMask | placedMasks[row][previousColumn])) {
                     hasPositiveForwardPairs = false;
                     break;
@@ -844,11 +842,8 @@ async function generateRandomPitchClassMatrixSingleAttempt({
             const candidateMask = candidates[candidateIndex].mask;
             const nextColumnUnionMask = previousColumnUnionMask | candidateMask;
 
-            if (leftIndex >= 0 && !hasPositivePrediction(candidateMask | candidates[leftIndex].mask)) {
-                continue;
-            }
             let hasPositiveForwardPairs = true;
-            for (let previousColumn = 0; previousColumn < column - 1; previousColumn += 1) {
+            for (let previousColumn = 0; previousColumn < column; previousColumn += 1) {
                 const previousIndex = matrixIndexes[row][previousColumn];
                 if (!hasPositivePrediction(candidateMask | candidates[previousIndex].mask)) {
                     hasPositiveForwardPairs = false;
