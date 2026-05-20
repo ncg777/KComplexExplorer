@@ -523,6 +523,23 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         await copyToClipboard(text);
     }, [copyToClipboard, getChordMatrixLabel, matrixData]);
 
+    const copyMatrixToPolychord = useCallback(() => {
+        if (!matrixData || matrixData.length === 0) return;
+
+        const columnCount = matrixData[0]?.length ?? 0;
+        const text = Array.from({ length: columnCount }, (_, columnIndex) =>
+            matrixData
+                .map(row => row[columnIndex])
+                .filter((chord): chord is PCS12 => Boolean(chord))
+                .map(chord => getChordMatrixLabel(chord))
+                .join(' ')
+        ).join(', ');
+
+        setPolychordText(text);
+        setPolychordResult('');
+        setShowPolychord(true);
+    }, [getChordMatrixLabel, matrixData]);
+
     const updateSentiment = useCallback((chord: PCS12, sentiment: SentimentValue) => {
         const forte = chord.toString();
         setSentiments(prev => ({
@@ -1689,6 +1706,15 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                 title="Copy the matrix as tab-separated Forte numbers"
                             >
                                 📋 Copy names
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline-info"
+                                onClick={copyMatrixToPolychord}
+                                disabled={isBusy || !matrixData}
+                                title="Copy matrix columns into the polychord input"
+                            >
+                                ↪ Polychord
                             </Button>
                             <Button
                                 variant="outline-danger"
