@@ -60,7 +60,6 @@ export const ChordDetails: React.FC<{ chord: PCS12 }> = ({ chord }) => {
             <strong>Interval vector: </strong>{chord.getIntervalVector()?.join(' ') || '[]'}<br />
             <strong>Interval vector entropy: </strong>{entropy.toFixed(3)} ({level})<br />
             <strong>Symmetries: </strong>{chord.getSymmetries().map(x => String(x)).join(" ") || "None"}<br />
-            <strong>Tension partition: </strong>{chord.getTensionPartition().map(x => String(x)).join(" ") || "None"} <em>(experimental)</em><br />
             <strong>Cyclical mean: </strong>{cyclicalMean ? `${cyclicalMean.value.toFixed(3)} (≈${cyclicalMean.nearestNote})` : 'N/A'}
         </>
     );
