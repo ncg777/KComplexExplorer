@@ -639,10 +639,10 @@ typescript@^5.3.3:
   resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.9.3.tgz#5b4f59e15310ab17a216f5d6cf53ee476ede670f"
   integrity sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==
 
-ultra-mega-enumerator@^2026.6.13:
-  version "2026.6.13"
-  resolved "https://registry.yarnpkg.com/ultra-mega-enumerator/-/ultra-mega-enumerator-2026.6.13.tgz#983313d65a410ad73c01f704aebd3ded9dc57923"
-  integrity sha512-sse7PJsUrBr829ZOZGetr+kLS5eeoNfIrghcODsSkajBhaQkc/TzQEqKIGyw6F26XJSw4PjwGLkEExKPQSRW9A==
+ultra-mega-enumerator@^2026.6.20:
+  version "2026.6.20"
+  resolved "https://registry.yarnpkg.com/ultra-mega-enumerator/-/ultra-mega-enumerator-2026.6.20.tgz#1dea964804cf9dbf9da2072eea6ea622d60618c5"
+  integrity sha512-WKUWR1jjSDfZi+ORQYU3dEkEy+8xtdP470qGhGSTAHYFzwMomEnCaG64Qy5EY3VTEaAWDYDz436EhsF4wSW1hw==
   dependencies:
     "@types/node" "^22.5.1"
     yarn "^1.22.22"

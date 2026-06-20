@@ -1,6 +1,6 @@
 {
   "name": "k-complex-explorer-cli",
-  "version": "2026.6.19",
+  "version": "2026.6.20",
   "description": "CLI and MCP server for KComplexExplorer - Pitch-Class Set analysis tools",
   "license": "MIT",
   "type": "module",
@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
-    "ultra-mega-enumerator": "^2026.6.13"
+    "ultra-mega-enumerator": "^2026.6.20"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
