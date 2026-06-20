@@ -5,9 +5,16 @@ import {
   type EntropyLevel,
 } from './interval-vector-entropy.js';
 
+const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
 export type PredictedSentimentValue = -1 | 0 | 1;
 export type SentimentPredictionMap = Record<string, PredictedSentimentValue>;
 export type SentimentScoreMap = Record<string, number>;
+
+export interface CyclicalMeanResult {
+  value: number;
+  nearestNote: string;
+}
 
 /**
  * Normalize a Forte number string. If no rotation suffix is present
@@ -33,6 +40,7 @@ export interface PCS12Analysis {
   forte: string;
   commonName: string;
   pitchClasses: number[];
+  cyclicalMean: CyclicalMeanResult | null;
   intervals: number[];
   intervalVector: number[];
   intervalVectorEntropy: number;
@@ -40,6 +48,13 @@ export interface PCS12Analysis {
   symmetries: number[];
   tensionPartition: number[];
   cardinality: number;
+}
+
+export interface CyclicalMeanAnalysis {
+  forte: string;
+  commonName: string;
+  pitchClasses: number[];
+  cyclicalMean: CyclicalMeanResult | null;
 }
 
 export interface PCS12MatrixResult {
@@ -57,6 +72,31 @@ export async function ensureInitialized(): Promise<void> {
   }
 }
 
+export function getCyclicalMean(pcs: PCS12): CyclicalMeanResult | null {
+  const pitchClasses = pcs.asSequence();
+  if (pitchClasses.length === 0) return null;
+
+  let sumX = 0;
+  let sumY = 0;
+  for (const pitchClass of pitchClasses) {
+    const angle = (pitchClass * 2 * Math.PI) / 12;
+    sumX += Math.cos(angle);
+    sumY += Math.sin(angle);
+  }
+
+  const avgX = sumX / pitchClasses.length;
+  const avgY = sumY / pitchClasses.length;
+  const radius = Math.hypot(avgX, avgY);
+  if (radius < 1e-10) return null;
+
+  const meanAngle = Math.atan2(avgY, avgX);
+  const raw = (meanAngle * 12) / (2 * Math.PI);
+  const value = ((raw % 12) + 12) % 12;
+  const nearestNote = NOTE_NAMES[Math.round(value) % 12];
+
+  return { value, nearestNote };
+}
+
 /**
  * Analyze a PCS12 object and return a structured result.
  */
@@ -67,6 +107,7 @@ export function analyzePCS12(pcs: PCS12): PCS12Analysis {
     forte: pcs.toString(),
     commonName: pcs.getCommonName() || 'None',
     pitchClasses: pcs.asSequence(),
+    cyclicalMean: getCyclicalMean(pcs),
     intervals: pcs.getIntervals(),
     intervalVector,
     intervalVectorEntropy,
@@ -77,6 +118,21 @@ export function analyzePCS12(pcs: PCS12): PCS12Analysis {
   };
 }
 
+export function formatCyclicalMean(cyclicalMean: CyclicalMeanResult | null): string {
+  return cyclicalMean
+    ? `${cyclicalMean.value.toFixed(3)} (nearest note: ${cyclicalMean.nearestNote})`
+    : 'N/A';
+}
+
+export function formatCyclicalMeanAnalysis(analysis: CyclicalMeanAnalysis): string {
+  return [
+    `Forte number: ${analysis.forte}`,
+    `Common name(s): ${analysis.commonName}`,
+    `Pitch classes: ${analysis.pitchClasses.join(' ')}`,
+    `Cyclical mean: ${formatCyclicalMean(analysis.cyclicalMean)}`,
+  ].join('\n');
+}
+
 /**
  * Format a PCS12Analysis as a human-readable string.
  */
@@ -85,6 +141,7 @@ export function formatAnalysis(analysis: PCS12Analysis): string {
     `Forte number: ${analysis.forte}`,
     `Common name(s): ${analysis.commonName}`,
     `Pitch classes: ${analysis.pitchClasses.join(' ')}`,
+    `Cyclical mean: ${formatCyclicalMean(analysis.cyclicalMean)}`,
     `Intervals: ${analysis.intervals.join(' ')}`,
     `Interval vector: ${analysis.intervalVector.join(' ')}`,
     `Interval vector entropy: ${analysis.intervalVectorEntropy.toFixed(3)} (${analysis.intervalVectorEntropyLevel})`,
@@ -103,6 +160,20 @@ export function analyze(forte: string): PCS12Analysis {
     throw new Error(`Invalid Forte number: "${forte}"`);
   }
   return analyzePCS12(pcs);
+}
+
+export function cyclicalMean(forte: string): CyclicalMeanAnalysis {
+  const pcs = parseForteNormalized(forte);
+  if (!pcs) {
+    throw new Error(`Invalid Forte number: "${forte}"`);
+  }
+
+  return {
+    forte: pcs.toString(),
+    commonName: pcs.getCommonName() || 'None',
+    pitchClasses: pcs.asSequence(),
+    cyclicalMean: getCyclicalMean(pcs),
+  };
 }
 
 /**

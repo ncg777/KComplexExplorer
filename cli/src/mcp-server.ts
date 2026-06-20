@@ -12,11 +12,13 @@ import {
   union,
   intersection,
   zRelations,
+  cyclicalMean,
   computePolychordMasks,
   transpose,
   sortChords,
   generateMatrix,
   formatAnalysis,
+  formatCyclicalMeanAnalysis,
   type PCS12Analysis,
 } from './pcs12-operations.js';
 
@@ -205,6 +207,25 @@ async function main(): Promise<void> {
         }
         return {
           content: [{ type: 'text' as const, text: lines.join('\n') }],
+        };
+      } catch (err: any) {
+        return { content: [{ type: 'text' as const, text: `Error: ${err.message}` }], isError: true };
+      }
+    },
+  );
+
+  // Tool: cyclical_mean
+  server.tool(
+    'cyclical_mean',
+    'Compute the cyclical mean of a pitch-class set on the chromatic circle. Returns the circular mean as a pitch-class value and nearest note name, or N/A when the mean direction is undefined.',
+    {
+      forte: z.string().describe('Forte number of the pitch-class set (e.g., "3-11A", "7-35")'),
+    },
+    async ({ forte }) => {
+      try {
+        const result = cyclicalMean(forte);
+        return {
+          content: [{ type: 'text' as const, text: formatCyclicalMeanAnalysis(result) }],
         };
       } catch (err: any) {
         return { content: [{ type: 'text' as const, text: `Error: ${err.message}` }], isError: true };

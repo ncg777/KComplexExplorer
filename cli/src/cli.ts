@@ -10,10 +10,12 @@ import {
   union,
   intersection,
   zRelations,
+  cyclicalMean,
   computePolychordMasks,
   transpose,
   sortChords,
   formatAnalysis,
+  formatCyclicalMeanAnalysis,
   generateMatrix,
   type SentimentPredictionMap,
   type SentimentScoreMap,
@@ -57,6 +59,10 @@ Commands:
   z-relations <forte>
       Find Z-related chords (same interval vector, different content).
       Example: kcomplex z-relations 6-z29
+
+    cyclical-mean <forte>
+      Compute the cyclical mean of a pitch-class set on the chromatic circle.
+      Example: kcomplex cyclical-mean 3-11A
 
   transpose <forte> <semitones>
       Transpose a pitch-class set by a number of semitones.
@@ -235,6 +241,20 @@ async function main(): Promise<void> {
             console.log(formatAnalysis(mate));
           }
         }
+      }
+      break;
+    }
+
+    case 'cyclical-mean': {
+      if (positional.length < 1) {
+        console.error('Error: cyclical-mean requires a Forte number argument.');
+        process.exit(1);
+      }
+      const result = cyclicalMean(positional[0]);
+      if (asJson) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        console.log(formatCyclicalMeanAnalysis(result));
       }
       break;
     }

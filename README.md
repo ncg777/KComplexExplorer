@@ -92,6 +92,9 @@ node dist/cli.js intersection 7-35 7-34
 # Z-relations
 node dist/cli.js z-relations 6-z29
 
+# Cyclical mean
+node dist/cli.js cyclical-mean 3-11A
+
 # Transpose
 node dist/cli.js transpose 3-11A 5
 
@@ -153,6 +156,7 @@ To connect the server to an MCP-compatible client (e.g., Claude Desktop, Cursor)
 | `union` | Compute the union of multiple PCS |
 | `intersection` | Compute the intersection of multiple PCS |
 | `z_relations` | Find Z-related chords (same interval vector) |
+| `cyclical_mean` | Compute the cyclical mean of a PCS |
 | `transpose` | Transpose a PCS by semitones |
 | `generate_matrix` | Generate a constrained random matrix from sentiment predictions, with optional stasis weight and seed |
 
