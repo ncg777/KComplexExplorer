@@ -86,6 +86,20 @@ interface IntervalVectorRangeDraft {
     max: string;
 }
 
+interface MatrixSnapshot {
+    matrix: PCS12[][];
+    lockedCells: boolean[][];
+    rowOrder: number[];
+    colOrder: number[];
+}
+
+interface MatrixVariation {
+    id: string;
+    rowOrder: number[];
+    colOrder: number[];
+    polychord: string;
+}
+
 function parseIntervalVectorBound(value: string): number | null {
     if (!value.trim()) return null;
 
@@ -93,6 +107,50 @@ function parseIntervalVectorBound(value: string): number | null {
     if (Number.isNaN(parsed)) return null;
 
     return Math.max(0, parsed);
+}
+
+function identityOrder(length: number): number[] {
+    return Array.from({ length }, (_, i) => i);
+}
+
+function reversePerm(length: number): number[] {
+    return identityOrder(length).reverse();
+}
+
+function rotatePerm(length: number, by = 1): number[] {
+    if (length === 0) return [];
+    const shift = ((by % length) + length) % length;
+    return identityOrder(length).map(i => (i + shift) % length);
+}
+
+function shufflePerm(length: number): number[] {
+    const arr = identityOrder(length);
+    for (let i = length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+function movePerm(length: number, from: number, to: number): number[] {
+    const arr = identityOrder(length);
+    const [moved] = arr.splice(from, 1);
+    arr.splice(to, 0, moved);
+    return arr;
+}
+
+// Permutation that restores ascending original order given the current order labels.
+function restoreOrderPerm(order: number[]): number[] {
+    return order.map((_, i) => i).sort((a, b) => order[a] - order[b]);
+}
+
+// Permutation that turns the current order labels into the target order labels.
+function matchOrderPerm(currentOrder: number[], targetOrder: number[]): number[] {
+    return targetOrder.map(label => currentOrder.indexOf(label));
+}
+
+function formatOrderLabel(order: number[]): string {
+    return order.map(i => i + 1).join('-');
 }
     
 const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
@@ -160,7 +218,10 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const [lockedCells, setLockedCells] = useState<boolean[][]>([]);
     const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
     const [showCellEditor, setShowCellEditor] = useState(false);
-    const [matrixHistory, setMatrixHistory] = useState<PCS12[][][]>([]);
+    const [matrixHistory, setMatrixHistory] = useState<MatrixSnapshot[]>([]);
+    const [rowOrder, setRowOrder] = useState<number[]>([]);
+    const [colOrder, setColOrder] = useState<number[]>([]);
+    const [savedVariations, setSavedVariations] = useState<MatrixVariation[]>([]);
     const modelRef = useRef<tf.LayersModel | null>(null);
     const trainingStatsRef = useRef<SentimentTrainingStats | null>(trainingStats);
     const importPresetInputRef = useRef<HTMLInputElement>(null);
@@ -523,22 +584,36 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         await copyToClipboard(text);
     }, [copyToClipboard, getChordMatrixLabel, matrixData]);
 
-    const copyMatrixToPolychord = useCallback(() => {
-        if (!matrixData || matrixData.length === 0) return;
-
-        const columnCount = matrixData[0]?.length ?? 0;
-        const text = Array.from({ length: columnCount }, (_, columnIndex) =>
-            matrixData
+    const buildPolychordString = useCallback((matrix: PCS12[][]): string => {
+        const columnCount = matrix[0]?.length ?? 0;
+        return Array.from({ length: columnCount }, (_, columnIndex) =>
+            matrix
                 .map(row => row[columnIndex])
                 .filter((chord): chord is PCS12 => Boolean(chord))
                 .map(chord => getChordMatrixLabel(chord))
                 .join(' ')
         ).join(', ');
+    }, [getChordMatrixLabel]);
 
-        setPolychordText(text);
+    const copyMatrixToPolychord = useCallback(() => {
+        if (!matrixData || matrixData.length === 0) return;
+
+        setPolychordText(buildPolychordString(matrixData));
         setPolychordResult('');
         setShowPolychord(true);
-    }, [getChordMatrixLabel, matrixData]);
+    }, [buildPolychordString, matrixData]);
+
+    const appendMatrixToPolychord = useCallback(() => {
+        if (!matrixData || matrixData.length === 0) return;
+
+        const line = buildPolychordString(matrixData);
+        setPolychordText(prev => {
+            const trimmed = prev.replace(/\s+$/, '');
+            return trimmed ? `${trimmed}\n${line}` : line;
+        });
+        setPolychordResult('');
+        setShowPolychord(true);
+    }, [buildPolychordString, matrixData]);
 
     const updateSentiment = useCallback((chord: PCS12, sentiment: SentimentValue) => {
         const forte = chord.toString();
@@ -1016,9 +1091,136 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         }));
     }, []);
 
-    const pushMatrixHistory = useCallback((current: PCS12[][]) => {
-        setMatrixHistory(prev => [...prev.slice(-19), current.map(row => [...row])]);
+    const captureMatrixSnapshot = useCallback((): MatrixSnapshot | null => {
+        if (!matrixData) return null;
+        return {
+            matrix: matrixData.map(row => [...row]),
+            lockedCells: lockedCells.map(row => [...row]),
+            rowOrder: [...rowOrder],
+            colOrder: [...colOrder],
+        };
+    }, [matrixData, lockedCells, rowOrder, colOrder]);
+
+    const pushMatrixHistory = useCallback((snapshot: MatrixSnapshot | null) => {
+        if (!snapshot) return;
+        setMatrixHistory(prev => [...prev.slice(-19), snapshot]);
     }, []);
+
+    const applyMatrixPermutation = useCallback((rowPerm: number[] | null, colPerm: number[] | null) => {
+        if (!matrixData || matrixData.length === 0) return;
+        const rows = matrixData.length;
+        const cols = matrixData[0]?.length ?? 0;
+        const rp = rowPerm ?? identityOrder(rows);
+        const cp = colPerm ?? identityOrder(cols);
+        const baseRowOrder = rowOrder.length === rows ? rowOrder : identityOrder(rows);
+        const baseColOrder = colOrder.length === cols ? colOrder : identityOrder(cols);
+
+        pushMatrixHistory({
+            matrix: matrixData.map(row => [...row]),
+            lockedCells: lockedCells.map(row => [...row]),
+            rowOrder: [...baseRowOrder],
+            colOrder: [...baseColOrder],
+        });
+
+        setMatrixData(rp.map(i => cp.map(j => matrixData[i][j])));
+        setLockedCells(rp.map(i => cp.map(j => lockedCells[i]?.[j] ?? false)));
+        setRowOrder(rp.map(i => baseRowOrder[i]));
+        setColOrder(cp.map(j => baseColOrder[j]));
+        setSelectedCell(null);
+        setShowCellEditor(false);
+    }, [matrixData, lockedCells, rowOrder, colOrder, pushMatrixHistory]);
+
+    const handleMoveRow = useCallback((from: number, to: number) => {
+        if (!matrixData) return;
+        applyMatrixPermutation(movePerm(matrixData.length, from, to), null);
+    }, [matrixData, applyMatrixPermutation]);
+
+    const handleMoveColumn = useCallback((from: number, to: number) => {
+        const cols = matrixData?.[0]?.length ?? 0;
+        if (cols === 0) return;
+        applyMatrixPermutation(null, movePerm(cols, from, to));
+    }, [matrixData, applyMatrixPermutation]);
+
+    const handleReverseRows = useCallback(() => {
+        if (!matrixData) return;
+        applyMatrixPermutation(reversePerm(matrixData.length), null);
+    }, [matrixData, applyMatrixPermutation]);
+
+    const handleReverseColumns = useCallback(() => {
+        const cols = matrixData?.[0]?.length ?? 0;
+        if (cols === 0) return;
+        applyMatrixPermutation(null, reversePerm(cols));
+    }, [matrixData, applyMatrixPermutation]);
+
+    const handleRotateRows = useCallback(() => {
+        if (!matrixData) return;
+        applyMatrixPermutation(rotatePerm(matrixData.length), null);
+    }, [matrixData, applyMatrixPermutation]);
+
+    const handleRotateColumns = useCallback(() => {
+        const cols = matrixData?.[0]?.length ?? 0;
+        if (cols === 0) return;
+        applyMatrixPermutation(null, rotatePerm(cols));
+    }, [matrixData, applyMatrixPermutation]);
+
+    const handleShuffleRows = useCallback(() => {
+        if (!matrixData) return;
+        applyMatrixPermutation(shufflePerm(matrixData.length), null);
+    }, [matrixData, applyMatrixPermutation]);
+
+    const handleShuffleColumns = useCallback(() => {
+        const cols = matrixData?.[0]?.length ?? 0;
+        if (cols === 0) return;
+        applyMatrixPermutation(null, shufflePerm(cols));
+    }, [matrixData, applyMatrixPermutation]);
+
+    const handleResetOrder = useCallback(() => {
+        if (!matrixData) return;
+        applyMatrixPermutation(restoreOrderPerm(rowOrder), restoreOrderPerm(colOrder));
+    }, [matrixData, rowOrder, colOrder, applyMatrixPermutation]);
+
+    const isOriginalOrder = useMemo(
+        () => rowOrder.every((v, i) => v === i) && colOrder.every((v, i) => v === i),
+        [rowOrder, colOrder]
+    );
+
+    const handleSaveVariation = useCallback(() => {
+        if (!matrixData || matrixData.length === 0) return;
+        const polychord = buildPolychordString(matrixData);
+        setSavedVariations(prev => {
+            if (prev.some(v => v.polychord === polychord)) return prev;
+            return [...prev, {
+                id: `${Date.now()}-${prev.length}`,
+                rowOrder: [...rowOrder],
+                colOrder: [...colOrder],
+                polychord,
+            }];
+        });
+    }, [matrixData, rowOrder, colOrder, buildPolychordString]);
+
+    const handleRestoreVariation = useCallback((variation: MatrixVariation) => {
+        if (!matrixData) return;
+        const rowPerm = matchOrderPerm(rowOrder, variation.rowOrder);
+        const colPerm = matchOrderPerm(colOrder, variation.colOrder);
+        if (rowPerm.some(i => i < 0) || colPerm.some(j => j < 0)) return;
+        applyMatrixPermutation(rowPerm, colPerm);
+    }, [matrixData, rowOrder, colOrder, applyMatrixPermutation]);
+
+    const handleRemoveVariation = useCallback((id: string) => {
+        setSavedVariations(prev => prev.filter(v => v.id !== id));
+    }, []);
+
+    const handleClearVariations = useCallback(() => {
+        setSavedVariations([]);
+    }, []);
+
+    const handleSendVariationsToPolychord = useCallback(() => {
+        if (savedVariations.length === 0) return;
+        setPolychordText(savedVariations.map(v => v.polychord).join('\n'));
+        setPolychordResult('');
+        setShowPolychord(true);
+    }, [savedVariations]);
+
 
     const handleGenerateRandomMatrix = useCallback(async () => {
         const upperBound = PCS12.parseForte(selectedScale);
@@ -1035,6 +1237,9 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         cancelMatrixSearchRef.current = false;
         setMatrixData(null);
         setLockedCells([]);
+        setRowOrder([]);
+        setColOrder([]);
+        setSavedVariations([]);
         setSelectedCell(null);
         setShowCellEditor(false);
         setMatrixHistory([]);
@@ -1066,6 +1271,8 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
 
             setMatrixData(result.matrix);
             setLockedCells(Array.from({ length: matrixRowCount }, () => Array(matrixColumnCount).fill(false)));
+            setRowOrder(identityOrder(matrixRowCount));
+            setColOrder(identityOrder(matrixColumnCount));
             setModelFeedback(
                 `Generated a random ${matrixRowCount}×${matrixColumnCount} matrix from ${result.candidateCount} attractive candidates `
                 + `at β=${matrixStiffness.toFixed(1)}, stasis=${matrixStasisWeight.toFixed(2)}, seed=${result.seed}. `
@@ -1120,7 +1327,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
             });
 
             if (result) {
-                pushMatrixHistory(matrixData);
+                pushMatrixHistory(captureMatrixSnapshot());
                 setMatrixData(result.matrix);
                 setSelectedCell(null);
                 setShowCellEditor(false);
@@ -1142,12 +1349,15 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         } finally {
             window.setTimeout(() => setMatrixSearchState({ isSearching: false, progress: 0, message: '' }), 250);
         }
-    }, [hasMatrixOptimizationScores, lockedCells, matrixData, matrixNoteCount, matrixOptimizeConfidence, matrixOptimizationAttempts, matrixStasisWeight, matrixStiffness, predictedSentimentScores, predictedSentiments, pushMatrixHistory, selectedScale]);
+    }, [captureMatrixSnapshot, hasMatrixOptimizationScores, lockedCells, matrixData, matrixNoteCount, matrixOptimizeConfidence, matrixOptimizationAttempts, matrixStasisWeight, matrixStiffness, predictedSentimentScores, predictedSentiments, pushMatrixHistory, selectedScale]);
 
     const handleUndo = useCallback(() => {
         if (matrixHistory.length === 0) return;
         const prev = matrixHistory[matrixHistory.length - 1];
-        setMatrixData(prev);
+        setMatrixData(prev.matrix);
+        setLockedCells(prev.lockedCells);
+        setRowOrder(prev.rowOrder);
+        setColOrder(prev.colOrder);
         setMatrixHistory(h => h.slice(0, -1));
         setSelectedCell(null);
         setShowCellEditor(false);
@@ -1185,30 +1395,38 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
         const scaleSeq = parsedScale.asSequence();
         const k = parsedScale.getK();
 
-        const entries = polychordText.split(',').map(s => s.trim()).filter(Boolean);
-        const out: string[] = [];
+        // Each non-empty line is treated as an independent polychord sequence so that
+        // several matrix variations can be converted to bitmasks in one pass.
+        const lines = polychordText.split('\n').map(line => line.trim()).filter(Boolean);
 
-        for (const entry of entries) {
-            const tokens = entry.split(/\s+/).map(t => t.trim()).filter(Boolean);
-            const chords: PCS12[] = tokens.map(t => PCS12.parseForte(t)).filter(Boolean) as PCS12[];
+        const resultLines = lines.map(line => {
+            const entries = line.split(',').map(s => s.trim()).filter(Boolean);
+            const out: string[] = [];
 
-            let o = BigInt(0);
-            for (let i = 0; i < chords.length; i++) {
-                const seq = chords[i].asSequence();
-                let seg = BigInt(0);
-                for (const pc of seq) {
-                    const idx = scaleSeq.indexOf(pc);
-                    if (idx === -1) continue;
-                    seg |= (BigInt(1) << BigInt(idx));
+            for (const entry of entries) {
+                const tokens = entry.split(/\s+/).map(t => t.trim()).filter(Boolean);
+                const chords: PCS12[] = tokens.map(t => PCS12.parseForte(t)).filter(Boolean) as PCS12[];
+
+                let o = BigInt(0);
+                for (let i = 0; i < chords.length; i++) {
+                    const seq = chords[i].asSequence();
+                    let seg = BigInt(0);
+                    for (const pc of seq) {
+                        const idx = scaleSeq.indexOf(pc);
+                        if (idx === -1) continue;
+                        seg |= (BigInt(1) << BigInt(idx));
+                    }
+                    const shift = BigInt(i * k);
+                    o |= (seg << shift);
                 }
-                const shift = BigInt(i * k);
-                o |= (seg << shift);
+
+                out.push(o.toString());
             }
 
-            out.push(o.toString());
-        }
+            return out.join(' ');
+        });
 
-        setPolychordResult(out.join(' '));
+        setPolychordResult(resultLines.join('\n'));
     }, [polychordText, selectedScale]);
 
     // Chord Sorter UI state and computation
@@ -1344,8 +1562,8 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                     <div className="setop-body">
                         <Form.Control
                             as="textarea"
-                            rows={2}
-                            placeholder={'Enter polychords, comma-separated. Each entry: space-separated Forte numbers (e.g. "3-11A 3-11B, 4-19").'}
+                            rows={3}
+                            placeholder={'Enter polychords, comma-separated. Each entry: space-separated Forte numbers (e.g. "3-11A 3-11B, 4-19"). Put one sequence per line to compute several at once.'}
                             value={polychordText}
                             onChange={e => setPolychordText(e.target.value)}
                             className="list-search"
@@ -1357,10 +1575,10 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                             <Button size="sm" variant="outline-info" onClick={(e) => { e.stopPropagation(); copyToClipboard(polychordResult); }} disabled={!polychordResult}>Copy</Button>
                             <div style={{ marginLeft: 'auto', overflowX: 'auto' }}>
                                 <strong>Result:</strong>
-                                <span style={{ marginLeft: '8px', whiteSpace: 'pre' }}>{polychordResult}</span>
+                                <span style={{ marginLeft: '8px', whiteSpace: 'pre-wrap' }}>{polychordResult}</span>
                             </div>
                         </div>
-                        <div style={{ marginTop: '6px', fontSize: '0.9rem', color: '#999' }}>Example: "3-11A 3-11B, 4-19"</div>
+                        <div style={{ marginTop: '6px', fontSize: '0.9rem', color: '#999' }}>Example: "3-11A 3-11B, 4-19" — one sequence per line.</div>
                     </div>
                 )}
             </div>
@@ -1712,15 +1930,36 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                 variant="outline-info"
                                 onClick={copyMatrixToPolychord}
                                 disabled={isBusy || !matrixData}
-                                title="Copy matrix columns into the polychord input"
+                                title="Replace the polychord input with this matrix's columns"
                             >
                                 ↪ Polychord
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline-info"
+                                onClick={appendMatrixToPolychord}
+                                disabled={isBusy || !matrixData}
+                                title="Append this arrangement as a new line in the polychord builder"
+                            >
+                                ＋ Append polychord
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline-warning"
+                                onClick={handleSaveVariation}
+                                disabled={isBusy || !matrixData}
+                                title="Save the current row/column arrangement as a variation"
+                            >
+                                ⭐ Save variation
                             </Button>
                             <Button
                                 variant="outline-danger"
                                 onClick={() => {
                                     setMatrixData(null);
                                     setLockedCells([]);
+                                    setRowOrder([]);
+                                    setColOrder([]);
+                                    setSavedVariations([]);
                                     setSelectedCell(null);
                                     setShowCellEditor(false);
                                     setMatrixHistory([]);
@@ -1741,15 +1980,120 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                                     <div><strong>Column-union mean:</strong> {matrixMetrics.meanColumnUnionScore.toFixed(3)}</div>
                                 </div>
                             )}
+                            <div className="matrix-reorder-bar">
+                                <div className="matrix-reorder-group">
+                                    <span className="matrix-reorder-label">Rows</span>
+                                    <Button size="sm" variant="outline-secondary" onClick={handleReverseRows} disabled={isBusy || rowOrder.length < 2} title="Reverse row order">⇅ Reverse</Button>
+                                    <Button size="sm" variant="outline-secondary" onClick={handleRotateRows} disabled={isBusy || rowOrder.length < 2} title="Rotate rows down by one">⟳ Rotate</Button>
+                                    <Button size="sm" variant="outline-secondary" onClick={handleShuffleRows} disabled={isBusy || rowOrder.length < 2} title="Shuffle rows">🔀 Shuffle</Button>
+                                </div>
+                                <div className="matrix-reorder-group">
+                                    <span className="matrix-reorder-label">Columns</span>
+                                    <Button size="sm" variant="outline-secondary" onClick={handleReverseColumns} disabled={isBusy || colOrder.length < 2} title="Reverse column order">⇆ Reverse</Button>
+                                    <Button size="sm" variant="outline-secondary" onClick={handleRotateColumns} disabled={isBusy || colOrder.length < 2} title="Rotate columns right by one">⟳ Rotate</Button>
+                                    <Button size="sm" variant="outline-secondary" onClick={handleShuffleColumns} disabled={isBusy || colOrder.length < 2} title="Shuffle columns">🔀 Shuffle</Button>
+                                </div>
+                                <Button
+                                    size="sm"
+                                    variant={isOriginalOrder ? 'outline-secondary' : 'secondary'}
+                                    onClick={handleResetOrder}
+                                    disabled={isBusy || isOriginalOrder}
+                                    title="Restore the original generated row and column order"
+                                >
+                                    ↺ Reset order
+                                </Button>
+                                <span className="matrix-reorder-hint">
+                                    {isOriginalOrder
+                                        ? 'Original order — drag the R/C headers to permute.'
+                                        : 'Permuted — #n badges show original positions.'}
+                                </span>
+                            </div>
                             <MatrixBoard
                                 matrix={matrixData}
                                 lockedCells={lockedCells}
                                 selectedCell={selectedCell}
                                 predictions={predictedSentiments}
+                                rowOrder={rowOrder}
+                                colOrder={colOrder}
                                 onCellClick={handleCellClick}
                                 onLockToggle={handleLockToggle}
                                 onPlayChord={playChordSimul}
+                                onMoveRow={handleMoveRow}
+                                onMoveColumn={handleMoveColumn}
                             />
+
+                            <div className="matrix-variations">
+                                <div className="matrix-variations-header">
+                                    <strong>Saved variations ({savedVariations.length})</strong>
+                                    <div className="matrix-variations-actions">
+                                        <Button
+                                            size="sm"
+                                            variant="outline-info"
+                                            onClick={handleSendVariationsToPolychord}
+                                            disabled={isBusy || savedVariations.length === 0}
+                                            title="Load every saved variation into the polychord builder (one sequence per line)"
+                                        >
+                                            ↪ Send all to polychord
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="outline-danger"
+                                            onClick={handleClearVariations}
+                                            disabled={isBusy || savedVariations.length === 0}
+                                        >
+                                            Clear all
+                                        </Button>
+                                    </div>
+                                </div>
+                                {savedVariations.length === 0 ? (
+                                    <div className="matrix-variations-empty">
+                                        Permute the matrix, then press <strong>⭐ Save variation</strong> to collect arrangements here.
+                                        Send them all to the polychord builder to generate multiple sequences at once.
+                                    </div>
+                                ) : (
+                                    <ol className="matrix-variations-list">
+                                        {savedVariations.map((variation, index) => (
+                                            <li key={variation.id} className="matrix-variation-item">
+                                                <div className="matrix-variation-info">
+                                                    <span className="matrix-variation-index">#{index + 1}</span>
+                                                    <span className="matrix-variation-order">
+                                                        R&nbsp;{formatOrderLabel(variation.rowOrder)} · C&nbsp;{formatOrderLabel(variation.colOrder)}
+                                                    </span>
+                                                    <code className="matrix-variation-poly">{variation.polychord}</code>
+                                                </div>
+                                                <div className="matrix-variation-buttons">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline-secondary"
+                                                        onClick={() => handleRestoreVariation(variation)}
+                                                        disabled={isBusy}
+                                                        title="Re-apply this row/column arrangement to the matrix"
+                                                    >
+                                                        Restore
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline-info"
+                                                        onClick={() => copyToClipboard(variation.polychord)}
+                                                        title="Copy this variation's polychord sequence"
+                                                    >
+                                                        Copy
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline-danger"
+                                                        onClick={() => handleRemoveVariation(variation.id)}
+                                                        disabled={isBusy}
+                                                        title="Remove this variation"
+                                                    >
+                                                        ×
+                                                    </Button>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ol>
+                                )}
+                            </div>
                         </>
                     ) : (
                         <div style={{ color: '#888', fontSize: '0.9rem', padding: '8px 0' }}>
@@ -1788,7 +2132,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                         const isLocked = lockedCells[row]?.[col] ?? false;
 
                         const applyCandidate = (candidate: MatrixCandidate) => {
-                            pushMatrixHistory(matrixData);
+                            pushMatrixHistory(captureMatrixSnapshot());
                             setMatrixData(prev => {
                                 if (!prev) return prev;
                                 const next = prev.map(r => [...r]);
