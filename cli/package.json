@@ -1,6 +1,6 @@
 {
   "name": "k-complex-explorer-cli",
-  "version": "2026.6.20",
+  "version": "2026.7.24",
   "description": "CLI and MCP server for KComplexExplorer - Pitch-Class Set analysis tools",
   "license": "MIT",
   "type": "module",

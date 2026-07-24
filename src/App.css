@@ -23,7 +23,7 @@ body {
   text-align: center;
   max-width: 800px; /* Set the maximum width of the app */
   margin: 0 auto; /* Center the app */
-  padding: 12px 20px 20px; /* Add some padding */
+  padding: 12px 20px 56px; /* Add space for the fixed footer */
 }
 
 .App-header {
@@ -45,6 +45,29 @@ body {
 
 main {
   margin-top: 12px;
+}
+
+.App-footer {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  padding: 10px 20px;
+  font-size: 0.8rem;
+  background-color: rgba(0, 0, 0, 0.88);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.App-footer a {
+  color: rgba(255, 255, 255, 0.55);
+  text-decoration: none;
+}
+
+.App-footer a:hover,
+.App-footer a:focus-visible {
+  color: #61dafb;
+  text-decoration: underline;
 }
 
 @keyframes App-logo-spin {
