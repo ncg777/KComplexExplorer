@@ -33,15 +33,6 @@ function App() {
                     <KComplexExplorer scale="12-1.00" />
                 )}
             </main>
-            <footer className="App-footer">
-                <a
-                    href="https://paypal.me/ncg7777"
-                    target="_blank"
-                    rel="noreferrer"
-                >
-                    ❤️ Support K-complex Explorer
-                </a>
-            </footer>
         </div>
     );
 }
