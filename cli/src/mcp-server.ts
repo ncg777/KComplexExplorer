@@ -295,7 +295,7 @@ async function main(): Promise<void> {
 
   server.tool(
     'generate_matrix',
-    'Generate a constrained random pitch-class matrix from a prediction map. Requires full Forte-to-sentiment predictions for cells and their unions, plus optional score weights.',
+    'Generate a constrained random pitch-class matrix from a prediction map. Requires positive predictions for cells, every forward row-pair union, and full-column unions, plus optional score weights.',
     {
       upperBound: z.string().describe('Forte number of the upper bound scale (e.g., "7-35")'),
       rows: z.number().int().min(1).describe('Number of rows in the matrix'),

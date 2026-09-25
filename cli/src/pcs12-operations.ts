@@ -688,7 +688,6 @@ export async function generateMatrix(options: {
     const row = Math.floor(position / columns);
     const column = position % columns;
     const leftIndex = column > 0 ? matrixIndexes[row][column - 1] : -1;
-    const firstIndexInRow = matrixIndexes[row][0];
     const previousColumnUnionMask = columnUnionMasks[column];
     const remainingRowsInColumn = rows - row - 1;
     const validCandidateIndexes: number[] = [];
@@ -697,19 +696,19 @@ export async function generateMatrix(options: {
       const candidateMask = candidates[candidateIndex].mask;
       const nextColumnUnionMask = previousColumnUnionMask | candidateMask;
 
-      if (leftIndex >= 0 && !hasPositivePrediction(candidateMask | candidates[leftIndex].mask)) {
+      let hasPositiveForwardPairs = true;
+      for (let previousColumn = 0; previousColumn < column; previousColumn += 1) {
+        const previousIndex = matrixIndexes[row][previousColumn];
+        if (!hasPositivePrediction(candidateMask | candidates[previousIndex].mask)) {
+          hasPositiveForwardPairs = false;
+          break;
+        }
+      }
+      if (!hasPositiveForwardPairs) {
         continue;
       }
 
       if (!canReachPositiveColumnUnion(nextColumnUnionMask, remainingRowsInColumn)) {
-        continue;
-      }
-
-      if (
-        column === columns - 1
-        && firstIndexInRow >= 0
-        && !hasPositivePrediction(candidateMask | candidates[firstIndexInRow].mask)
-      ) {
         continue;
       }
 
@@ -743,7 +742,7 @@ export async function generateMatrix(options: {
 
   const found = await tryPlace(0);
   if (!found) {
-    throw new Error('No matrix satisfies the current dimensions, cyclic horizontal unions, and global column-union sentiment constraints.');
+    throw new Error('No matrix satisfies the current dimensions, all forward row-pair unions, and global column-union sentiment constraints.');
   }
 
   return {
