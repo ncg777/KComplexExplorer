@@ -73,7 +73,7 @@ Commands:
       Example: kcomplex sort-chords 3-11A 3-11B 3-4 --rotate 3
 
   generate-matrix --upper-bound <forte> --rows <n> --columns <n> --notes <n> --predictions-file <path> [--scores-file <path>] [--stiffness <n>] [--stasis-weight <n>] [--seed <n>]
-      Generate a constrained random matrix from sentiment predictions stored in JSON files.
+      Generate a matrix whose cells, all row-pair unions, and full-column unions have positive predictions stored in JSON files.
       Example: kcomplex generate-matrix --upper-bound 7-35 --rows 3 --columns 4 --notes 3 --predictions-file ./predictions.json --scores-file ./scores.json --stiffness 1.5 --stasis-weight 0.1 --seed 1234
 
 Options:
