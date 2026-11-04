@@ -9,6 +9,7 @@
 
 - **Pitch-Class Set (PCS) Analysis:** Analyze all possible pitch-class sets (PCS) of cardinalities 1–12.  
   > *A Pitch-Class Set (PCS) is a collection of distinct pitch classes (modulo 12), fundamental to post-tonal music theory.*
+- **Polynomial Scale Lab:** Generate scales from the first `k` outputs of an integer polynomial modulo 12. Edit coefficients through degree six, try curated presets or random valid rules, trace the generation order on a pitch-class clock, and hear both the sequence and the ascending scale. Choose distinct-prefix or full-permutation validation, then use the resulting collection as the explorer’s upper bound.
 - **Forte Number & Common Name Lookup:** Identify each set by its Forte number and standard musical name.
 - **Subset and Superset Display:** Select any set from the left-side list to instantly display all its subsets and supersets for intuitive exploration of set relationships.
 - **Playback Options:** Audition the notes of any set upwards, downwards, or simultaneously using the popup buttons.
