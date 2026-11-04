@@ -1,0 +1,157 @@
+.poly-launch {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+    padding: 18px 20px;
+    margin: 10px 0 18px;
+    text-align: left;
+    color: #f4f2ff;
+    border: 1px solid #514b83;
+    border-radius: 14px;
+    background: radial-gradient(ellipse at 5% 0%, #49316b66, transparent 65%), linear-gradient(110deg, #201c38, #151f2c);
+    transition: border-color 180ms, transform 180ms;
+}
+.poly-launch:hover { border-color: #a99bff; transform: translateY(-1px); }
+.poly-launch-icon { display: grid; place-items: center; flex-shrink: 0; width: 44px; height: 44px; border: 1px solid #7b6bb7; border-radius: 50%; background: #a99bff14; color: #c2b8ff; font-family: Georgia, serif; font-size: 28px; font-style: italic; }
+.poly-launch-copy { display: grid; gap: 3px; }
+.poly-launch-copy strong { font-size: 1rem; font-weight: 650; }
+.poly-launch-copy small { color: #b7b3ce; font-size: .8rem; }
+.poly-launch-arrow { margin-left: auto; color: #bcb1ff; font-size: 24px; }
+
+.polynomial-modal { --poly-text: #f0eefb; --poly-muted: #aaaac0; --poly-border: #36374e; --poly-purple: #b5a6ff; --poly-teal: #72e6cf; }
+.polynomial-modal .modal-dialog { max-width: 1080px; }
+.polynomial-modal .modal-content { overflow: hidden; border: 1px solid #48425f; border-radius: 22px; background: #151620; color: var(--poly-text); box-shadow: 0 28px 120px #0009; }
+.polynomial-modal .modal-header { align-items: flex-start; padding: 27px 30px 22px; border-bottom: 1px solid var(--poly-border); background: radial-gradient(ellipse at 0% 0%, #51407a44, transparent 70%), #1b1b29; }
+.polynomial-modal .modal-header .btn-close { margin-top: 0; }
+.poly-eyebrow { display: inline-block; color: var(--poly-muted); font-size: 10px; font-weight: 700; letter-spacing: .16em; }
+.polynomial-modal .modal-title { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 7px; font-size: clamp(23px, 3vw, 29px); font-weight: 650; letter-spacing: -.035em; }
+.poly-mod-badge { padding: 5px 8px; border: 1px solid #66558c; border-radius: 6px; color: #cbbaff; font-family: ui-monospace, monospace; font-size: 12px; font-weight: 500; letter-spacing: 0; }
+.poly-subtitle { margin: 7px 0 0; color: #b9b5cc; font-size: 13px; }
+.polynomial-modal .modal-body { padding: 24px 30px; background: #151620; }
+.poly-presets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; margin-bottom: 24px; }
+.poly-preset { display: grid; gap: 5px; padding: 12px 14px; border: 1px solid var(--poly-border); border-radius: 10px; background: #1d1e2b; color: var(--poly-text); text-align: left; transition: background 150ms, border-color 150ms; }
+.poly-preset:hover { border-color: #8277b5; background: #28253d; }
+.poly-preset.is-selected { border-color: #a895ed; background: #302745; box-shadow: inset 0 0 0 1px #a895ed22; }
+.poly-preset > span { font-size: 13px; font-weight: 650; }
+.poly-preset > small { font-size: 10px; line-height: 1.4; color: #b2aec8; }
+.poly-workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.04fr); gap: 28px; }
+.poly-controls { padding: 3px 0; }
+.poly-section-heading { display: flex; align-items: center; gap: 9px; }
+.poly-step { display: grid; place-items: center; width: 24px; height: 24px; flex-shrink: 0; border: 1px solid #51486f; border-radius: 7px; color: #bfb0f7; font-size: 10px; font-family: ui-monospace, monospace; }
+.polynomial-modal .poly-section-heading h3 { margin: 0; color: var(--poly-text); font-size: 14px; font-weight: 650; }
+.poly-formula { display: flex; flex-wrap: wrap; align-items: baseline; gap: 9px; min-height: 69px; padding: 20px 17px; margin: 15px 0 18px; border: 1px solid #4c4169; border-radius: 11px; background: linear-gradient(120deg, #302641, #222334); color: #c5b9f6; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.poly-formula > span { font-size: 15px; white-space: nowrap; }
+.poly-formula > strong { font-size: 20px; font-weight: 500; overflow-wrap: anywhere; }
+.poly-formula > small { margin-left: auto; color: #aea4c6; font-size: 11px; white-space: nowrap; }
+.poly-degree-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
+.poly-degree-row > label { color: #d4d1e2; font-size: 12px; }
+.polynomial-modal select, .polynomial-modal input[type="number"] { padding: 8px 10px; border: 1px solid #4b4861; border-radius: 7px; background: #242432; color: var(--poly-text); color-scheme: dark; font-size: 13px; }
+.poly-degree-row select { width: 145px; }
+.poly-coefficients { display: grid; grid-template-columns: repeat(auto-fit, minmax(65px, 1fr)); gap: 8px; }
+.poly-coefficient { display: grid; gap: 6px; min-width: 0; }
+.poly-coefficient > span { color: #bfb9d3; font-size: 11px; }
+.poly-coefficient > input { width: 100%; min-width: 0; font-family: ui-monospace, monospace; }
+.polynomial-modal input[aria-invalid="true"] { border-color: #e9b36e; }
+.poly-hint { margin: 9px 0 0; color: var(--poly-muted); font-size: 11px; line-height: 1.6; }
+.poly-count-heading { margin-top: 27px; }
+.poly-count-heading output { margin-left: auto; padding: 4px 8px; border-radius: 6px; background: #383047; color: #d8c8ff; font-family: ui-monospace, monospace; font-size: 13px; }
+.poly-range { display: block; appearance: none; width: 100%; height: 6px; margin: 21px 0 12px; border-radius: 10px; background: linear-gradient(to right, #ad98f5 var(--range-progress), #3b394f var(--range-progress)); cursor: pointer; }
+.poly-range::-webkit-slider-thumb { appearance: none; width: 18px; height: 18px; border: 3px solid #e6dcff; border-radius: 50%; background: #9a81e9; box-shadow: 0 0 0 5px #b098ff16; }
+.poly-range::-moz-range-thumb { width: 13px; height: 13px; border: 3px solid #e6dcff; border-radius: 50%; background: #9a81e9; }
+.poly-range-labels { display: flex; justify-content: space-between; color: #aba5bf; font-size: 10px; }
+.poly-mode { min-width: 0; margin: 20px 0 18px; padding: 0; border: 0; }
+.poly-mode legend { float: none; width: auto; margin-bottom: 9px; color: #d4d1e2; font-size: 12px; }
+.poly-segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border: 1px solid var(--poly-border); border-radius: 9px; background: #10111a; }
+.poly-segmented button { padding: 8px 5px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: #b5b0c8; font-size: 12px; }
+.poly-segmented button.is-selected { border-color: #665583; background: #352b49; color: #e6d9ff; }
+.poly-button { display: inline-flex; justify-content: center; align-items: center; gap: 8px; padding: 10px 14px; border: 1px solid #4c4962; border-radius: 8px; background: #262534; color: #e5e0f3; font-size: 12px; font-weight: 550; transition: background 150ms, border-color 150ms; }
+.poly-button:hover:not(:disabled) { border-color: #b2a2e7; background: #353046; }
+.poly-button:disabled { opacity: .45; cursor: not-allowed; }
+.poly-surprise { width: 100%; justify-content: flex-start; color: #d7c6ff; background: #252233; }
+.poly-surprise > span:first-child { font-size: 19px; line-height: 1; }
+.poly-surprise-caption { margin-left: auto; font-size: 10px; font-weight: 400; color: #aca3be; }
+.poly-preview { display: flex; flex-direction: column; align-items: center; padding: 16px 18px 18px; border: 1px solid #35354d; border-radius: 14px; background: radial-gradient(ellipse at 50% 20%, #35315155, transparent 65%), #1c1d2a; }
+.poly-preview-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; width: 100%; }
+.poly-preview-heading .poly-eyebrow { font-size: 9px; }
+.poly-status { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; }
+.poly-status::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.poly-status.is-valid { color: #8de5cf; }
+.poly-status.is-warning { color: #f0c082; }
+.poly-clock { display: block; width: 100%; max-width: 350px; height: auto; margin: 5px auto 0; overflow: visible; }
+.poly-clock-orbit { fill: none; stroke: #4a465e; stroke-width: 1; }
+.poly-clock-guide { fill: none; stroke: #4a465e66; stroke-width: 1; stroke-dasharray: 2 6; }
+.poly-clock-tick { stroke: #79708c; stroke-width: 1; }
+.poly-clock-center { fill: #212132; stroke: #524762; stroke-width: 1; }
+.poly-clock-count { fill: #f3ecff; text-anchor: middle; font-size: 38px; font-weight: 300; }
+.poly-clock-caption { fill: #c2b7d2; text-anchor: middle; font-size: 9px; letter-spacing: .04em; }
+.poly-clock-note > circle { fill: #2b2c3e; stroke: #787087; stroke-width: 1.5; transition: fill 180ms, stroke 180ms; }
+.poly-clock-note.is-selected > circle { fill: #a99bff; stroke: #d6cfff; }
+.poly-clock-note.is-repeated > circle { fill: #e4b36d; stroke: #ffdcaa; }
+.poly-clock-note.is-playing > circle { fill: #72e6cf; stroke: #d1fff3; }
+.poly-clock-note .poly-note-halo { fill: #72e6cf26 !important; stroke: #72e6cf66 !important; }
+.poly-note-name { fill: #aaa4b9; text-anchor: middle; font-size: 13px; font-weight: 500; }
+.poly-clock-note.is-selected .poly-note-name { fill: #f0ebff; }
+.poly-note-number { fill: #8e869e; text-anchor: middle; font-size: 8px; font-family: ui-monospace, monospace; }
+.poly-node-number { fill: #272038; text-anchor: middle; font-size: 10px; font-weight: 700; font-family: ui-monospace, monospace; }
+.poly-result { width: 100%; padding-top: 4px; }
+.poly-result-title { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.poly-result-title > span:last-child { color: #c3b3ff; font-size: 12px; font-family: ui-monospace, monospace; }
+.poly-result-title .poly-eyebrow { font-size: 9px; }
+.poly-result-notes { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px; }
+.poly-result-notes > span { display: grid; place-items: center; min-width: 29px; height: 30px; padding: 0 7px; border: 1px solid #63517e; border-radius: 6px; background: #372b49; color: #eee0ff; font-size: 12px; font-weight: 650; }
+.poly-result-notes > span.is-playing { border-color: #72e6cf; background: #244a43; color: #b0ffe9; }
+.poly-result-notes > span.poly-empty { border: 0; background: none; padding: 0; font-weight: 400; color: #bcb2cb; }
+.poly-common-name { margin: 9px 0 12px; color: #c0b6d0; font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
+.poly-intervals { display: flex; flex-wrap: wrap; gap: 5px 9px; padding-top: 11px; border-top: 1px solid #3b354d; font-size: 10px; color: #b0a8bf; }
+.poly-intervals strong { color: #c4b7e3; font-family: ui-monospace, monospace; font-size: 11px; font-weight: 400; }
+.poly-intervals small { margin-left: auto; }
+.poly-sequence { margin-top: 25px; padding-top: 22px; border-top: 1px solid var(--poly-border); }
+.poly-sequence-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 13px; }
+.poly-sequence-heading > span { color: #a8a0ba; font-size: 10px; }
+.poly-sequence-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 6px; padding: 0; margin: 0; list-style: none; }
+.poly-sequence-grid li { display: grid; justify-items: center; gap: 6px; padding: 10px 3px; border: 1px solid #38374a; border-radius: 8px; background: #1b1c27; color: #9d95ac; }
+.poly-sequence-grid li small { font-size: 9px; font-family: ui-monospace, monospace; }
+.poly-sequence-grid li strong { font-size: 15px; font-weight: 600; }
+.poly-sequence-grid li > span { font-size: 10px; color: #a7a0b8; font-family: ui-monospace, monospace; }
+.poly-sequence-grid li.is-included { border-color: #746098; background: #352a47; color: #ede0ff; }
+.poly-sequence-grid li.is-included small, .poly-sequence-grid li.is-included > span { color: #c8b7e1; }
+.poly-sequence-grid li.is-repeated { border-style: dashed; }
+.poly-sequence-grid li.is-included.is-repeated { border-color: #cc9f60; background: #433424; color: #ffdaa7; }
+.poly-sequence-grid li.is-playing { border-color: #9af0d8; background: #294b45; color: #c7ffed; }
+.poly-feedback { min-height: 36px; margin-top: 12px; color: #b3ccbf; font-size: 11px; line-height: 1.7; }
+.poly-feedback.is-warning { color: #f0c082; }
+.poly-playback { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 3px; }
+.poly-playback .poly-button > span { color: #bba6f6; font-size: 10px; }
+.poly-playback-note { margin-left: auto; color: #a49caf; font-size: 10px; }
+.poly-theory { margin-top: 20px; color: #b6acc7; font-size: 11px; line-height: 1.7; }
+.poly-theory summary { width: fit-content; cursor: pointer; color: #bfb1d9; }
+.poly-theory p { margin: 8px 0 0; max-width: 85ch; }
+.polynomial-modal .modal-footer { gap: 8px; padding: 17px 30px; border-top: 1px solid var(--poly-border); background: #1b1b29; }
+.polynomial-modal .modal-footer > * { margin: 0; }
+.polynomial-modal .modal-footer > p { margin-right: auto; color: #b3a9c3; font-size: 11px; }
+.poly-primary { border-color: #b7a4f3; background: #b7a4f3; color: #211b31; font-weight: 700; }
+.poly-primary:hover:not(:disabled) { border-color: #d4c3ff; background: #d0bdfa; }
+.polynomial-modal :is(button, input, select, summary):focus-visible, .poly-launch:focus-visible { outline: 2px solid #9ce9de; outline-offset: 4px; }
+.poly-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+@media (max-width: 767px) {
+    .polynomial-modal .modal-dialog { margin: 10px; }
+    .polynomial-modal .modal-header { padding: 22px 19px 18px; }
+    .polynomial-modal .modal-body { padding: 18px; }
+    .poly-presets { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 21px; }
+    .poly-workspace { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+    .poly-clock { max-width: 320px; }
+    .poly-sequence-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .poly-playback { display: grid; grid-template-columns: 1fr 1fr; }
+    .poly-playback .poly-button { padding: 10px 6px; font-size: 10px; }
+    .poly-playback-note { grid-column: 1 / -1; margin: 3px 0 0; }
+    .polynomial-modal .modal-footer { padding: 16px 18px; }
+    .polynomial-modal .modal-footer > p { flex-basis: 100%; margin-bottom: 4px; }
+    .poly-launch { gap: 12px; padding: 15px; }
+    .poly-launch-copy small { font-size: .72rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .poly-launch, .poly-preset, .poly-button, .poly-clock-note > circle { transition: none; }
+    .poly-launch:hover { transform: none; }
+}

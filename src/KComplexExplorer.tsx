@@ -61,6 +61,7 @@ import {
     MatrixCandidate,
 } from './randomPitchClassMatrix';
 import MatrixBoard from './MatrixBoard';
+import PolynomialScaleGenerator from './PolynomialScaleGenerator';
 import './KComplexExplorer.css';
 import * as Tone from 'tone';
 import { useSynth } from './SynthContext'; // Import the useSynth hook
@@ -166,6 +167,7 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
     const [activeSuperset, setActiveSuperset] = useState<string | null>(null);
     const [activeSubset, setActiveSubset] = useState<string | null>(null);
     const [showPcs12Modal, setShowPcs12Modal] = useState(false);
+    const [showPolynomialGenerator, setShowPolynomialGenerator] = useState(false);
     const [showHelpModal, setShowHelpModal] = useState(false);
     const [showPresetModal, setShowPresetModal] = useState(false);
 
@@ -1499,6 +1501,11 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                     </Button>
                 </div>
             </div>
+            <button type="button" className="poly-launch" onClick={() => setShowPolynomialGenerator(true)} aria-haspopup="dialog">
+                <span className="poly-launch-icon" aria-hidden="true">ƒ</span>
+                <span className="poly-launch-copy"><strong>Polynomial scale lab</strong><small>Turn a mathematical pattern into your next scale.</small></span>
+                <span className="poly-launch-arrow" aria-hidden="true">↗</span>
+            </button>
             {/* Set Operations Panel */}
             {(setOpItems.length > 0 || showSetOps) && (
                 <div className="setop-panel">
@@ -2418,6 +2425,16 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                         Click on a pitch class set to see its details, including common names, pitch classes, intervals, interval vector 
                         entropy (low/mid/high), and symmetries.
                     </p>
+                    <h6>Polynomial Scale Lab:</h6>
+                    <p>
+                        Open <strong>Polynomial scale lab</strong> to take the first k outputs of an integer
+                        polynomial modulo 12. Edit coefficients through degree six, choose a preset, or try
+                        <strong> Surprise me</strong>. The clock traces the generation order and the sequence
+                        marks repeated pitches. <strong>Distinct prefix</strong> requires only the first k
+                        outputs to differ; <strong>Full permutation</strong> requires all twelve to differ.
+                        Hear the generation order or the ascending scale, then choose <strong>Use as upper
+                        bound</strong> to explore that collection and its subsets.
+                    </p>
                     <h6>Sentiment Labels &amp; CSV Export:</h6>
                     <p>
                         Each set popover now includes sentiment buttons: <strong>+1</strong> (like), <strong>0</strong>
@@ -2628,6 +2645,14 @@ const KComplexExplorer: React.FC<KComplexExplorerProps> = ({ scale }) => {
                     </Button>
                 </Modal.Footer>
             </Modal>
+            <PolynomialScaleGenerator
+                show={showPolynomialGenerator}
+                onHide={() => setShowPolynomialGenerator(false)}
+                onExplore={chord => {
+                    handleScaleChange(chord.toString());
+                    setShowPolynomialGenerator(false);
+                }}
+            />
             <PCS12Identifier show={showPcs12Modal} onHide={() => setShowPcs12Modal(false)} />
         </div>
     );
